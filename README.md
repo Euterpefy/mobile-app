@@ -40,7 +40,7 @@ concurrency features.
 
 ## App Wireframe
 
-![euterpefy](https://github.com/bluesimp1102/cs4750-music-recommender-euterpefy/assets/88558991/511d1317-4753-416e-9ab1-5ce65ac95f0f)
+![euterpefy](https://github.com/Euterpefy/mobile-app/assets/88558991/6187d469-bf07-4c8f-80f0-5da19d38b16d)
 
 ## Getting Started
 
