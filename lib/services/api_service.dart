@@ -1,6 +1,8 @@
 import 'dart:convert';
-import 'package:euterpefy/models/SpotifyModels.dart';
-import 'package:euterpefy/models/TracksRequest.dart';
+
+import 'package:euterpefy/models/spotify_models.dart';
+import 'package:euterpefy/models/tracks_request.dart';
+
 import 'package:http/http.dart' as http;
 
 class ApiService {
