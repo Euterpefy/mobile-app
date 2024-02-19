@@ -1,39 +1,58 @@
-import 'package:euterpefy/views/home.dart';
+import 'package:euterpefy/utils/color.dart';
+import 'package:euterpefy/utils/providers/app_context.dart';
+import 'package:euterpefy/views/home/home.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-void main() {
-  runApp(const MyApp());
+import 'models/user.dart';
+
+Future<void> main() async {
+  await dotenv.load(fileName: '.env');
+  const storage = FlutterSecureStorage();
+  String? token = await storage.read(key: 'spotifyToken');
+  runApp(MyApp(token: token));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String? token;
+  const MyApp({super.key, this.token});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Euterpefy',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlueAccent),
-        useMaterial3: true,
+    return ChangeNotifierProvider(
+      create: (context) {
+        final appContext = AppContext();
+        if (token != null) {
+          _initContext(appContext, token!);
+        }
+        return appContext;
+      },
+      child: MaterialApp(
+        title: 'Euterpefy',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: blue),
+          useMaterial3: true,
+        ),
+        home: const HomePage(title: 'Music Recommender'),
       ),
-      home: const HomePage(title: 'Music Recommender'),
     );
   }
-}
 
+  Future<void> _initContext(AppContext appContext, String token) async {
+    appContext.setToken(token);
+    // Optionally initialize SpotifyService here if needed for initial data fetch
+    // Fetch user profile
+    final response = await http.get(
+      Uri.parse('https://api.spotify.com/v1/me'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      var data = json.decode(response.body);
+      appContext.setUser(User.fromJson(data));
+    }
+  }
+}
