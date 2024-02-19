@@ -1,4 +1,4 @@
-// lib/SpotifyModels.dart
+// lib/spotify_models.dart
 
 class Track {
   final String id;
@@ -8,6 +8,7 @@ class Track {
   final int durationMs;
   final String? previewUrl; // nullable
   final ExternalUrls externalUrls;
+  // final List<SpotifyImage> images;
 
   Track({
     required this.id,
@@ -17,17 +18,21 @@ class Track {
     required this.durationMs,
     this.previewUrl,
     required this.externalUrls,
+    // required this.images
   });
 
   factory Track.fromJson(Map<String, dynamic> json) {
     return Track(
       id: json['id'],
       name: json['name'],
-      artists: List<TrackArtist>.from(json['artists'].map((x) => TrackArtist.fromJson(x))),
+      artists: List<TrackArtist>.from(
+          json['artists'].map((x) => TrackArtist.fromJson(x))),
       album: Album.fromJson(json['album']),
       durationMs: json['duration_ms'],
       previewUrl: json['preview_url'],
       externalUrls: ExternalUrls.fromJson(json['external_urls']),
+      // images: List<SpotifyImage>.from(
+      //     json['images'].map((x) => SpotifyImage.fromJson(x)))
     );
   }
 
@@ -38,8 +43,10 @@ class Track {
       'artists': List<dynamic>.from(artists.map((x) => x.toJson())),
       'album': album.toJson(),
       'duration_ms': durationMs,
-      'preview_url': previewUrl, // No change needed here, as null is a valid value
+      'preview_url':
+          previewUrl, // No change needed here, as null is a valid value
       'external_urls': externalUrls.toJson(),
+      // 'images': List<dynamic>.from(images.map((x) => x.toJson())),
     };
   }
 }
@@ -74,26 +81,25 @@ class Artist {
   final List<String> genres;
   final int popularity;
 
-  Artist({
-    required this.id,
-    required this.name,
-    required this.images,
-    required this.spotifyUrl,
-    required this.followers,
-    required this.genres,
-    required this.popularity
-  });
+  Artist(
+      {required this.id,
+      required this.name,
+      required this.images,
+      required this.spotifyUrl,
+      required this.followers,
+      required this.genres,
+      required this.popularity});
 
   factory Artist.fromJson(Map<String, dynamic> json) {
     return Artist(
-        id: json['id'],
-        name: json['name'],
-        images: List<SpotifyImage>.from(
-            json['images'].map((x) => SpotifyImage.fromJson(x))),
-        spotifyUrl: json['external_urls']['spotify'],
-        followers: json['followers']['total'],
-        genres: List<String>.from(json['genres']),
-        popularity: json['popularity'],
+      id: json['id'],
+      name: json['name'],
+      images: List<SpotifyImage>.from(
+          json['images'].map((x) => SpotifyImage.fromJson(x))),
+      spotifyUrl: json['external_urls']['spotify'],
+      followers: json['followers']['total'],
+      genres: List<String>.from(json['genres']),
+      popularity: json['popularity'],
     );
   }
 
@@ -177,6 +183,45 @@ class ExternalUrls {
   Map<String, dynamic> toJson() {
     return {
       'spotify': spotify,
+    };
+  }
+}
+
+class ExplicitContent {
+  final bool filterEnabled;
+  final bool filterLocked;
+
+  ExplicitContent({required this.filterEnabled, required this.filterLocked});
+
+  factory ExplicitContent.fromJson(Map<String, dynamic> json) {
+    return ExplicitContent(
+      filterEnabled: json['filter_enabled'],
+      filterLocked: json['filter_locked'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'filter_enabled': filterEnabled,
+      'filter_locked': filterLocked,
+    };
+  }
+}
+
+class Followers {
+  final int total;
+
+  Followers({required this.total});
+
+  factory Followers.fromJson(Map<String, dynamic> json) {
+    return Followers(
+      total: json['total'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'total': total,
     };
   }
 }
