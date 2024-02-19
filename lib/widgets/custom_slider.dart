@@ -25,11 +25,13 @@ class CustomRangeSlider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween, // Adjust spacing overall
+      mainAxisAlignment:
+          MainAxisAlignment.spaceBetween, // Adjust spacing overall
       children: [
         // Wrap label and icon in a Flexible widget to manage space dynamically
         Flexible(
-          flex: 0, // Still aiming for compact size but with better space management
+          flex:
+              0, // Still aiming for compact size but with better space management
           child: Padding(
             padding: const EdgeInsets.only(left: 8),
             child: Row(
@@ -37,15 +39,19 @@ class CustomRangeSlider extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 if (description != null)
                   IconButton(
                     icon: const Icon(Icons.info_outline),
-                    onPressed: () => _showDescriptionDialog(context, description!),
+                    onPressed: () =>
+                        _showDescriptionDialog(context, description!),
                     tooltip: 'Info',
-                    padding: const EdgeInsets.only(left: 4), // Keep padding tight
-                    constraints: const BoxConstraints(), // Tighten constraints around the icon
+                    padding:
+                        const EdgeInsets.only(left: 4), // Keep padding tight
+                    constraints:
+                        const BoxConstraints(), // Tighten constraints around the icon
                   ),
               ],
             ),

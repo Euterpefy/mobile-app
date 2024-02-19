@@ -1,7 +1,9 @@
-import 'package:euterpefy/models/SpotifyModels.dart';
-import 'package:euterpefy/models/TracksRequest.dart';
+import 'package:euterpefy/models/spotify_models.dart';
+import 'package:euterpefy/models/tracks_request.dart';
 import 'package:euterpefy/services/api_service.dart';
+import 'package:euterpefy/utils/color.dart';
 import 'package:euterpefy/views/tracks_generating/recommendations.dart';
+import 'package:euterpefy/widgets/custom_appbar.dart';
 import 'package:flutter/material.dart';
 
 class ArtistSelectionScreen extends StatefulWidget {
@@ -11,12 +13,11 @@ class ArtistSelectionScreen extends StatefulWidget {
   final bool advanced;
 
   const ArtistSelectionScreen(
-      {Key? key,
+      {super.key,
       this.advanced = false,
       this.limit = 5,
       this.selectedGenres = const [],
-      this.selectedArtists = const []})
-      : super(key: key);
+      this.selectedArtists = const []});
 
   @override
   State<ArtistSelectionScreen> createState() => _ArtistSelectionScreenState();
@@ -26,7 +27,7 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
   final ApiService _apiService = ApiService();
 
   List<Artist> _artists = [];
-  Map<String, bool> _selectedArtists = {};
+  final Map<String, bool> _selectedArtists = {};
   DateTime _lastFetchTime = DateTime.now().subtract(const Duration(minutes: 1));
   bool _cooldownActive = false;
 
@@ -69,9 +70,7 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Seed Artists'),
-      ),
+      appBar: customAppBar(context, "Select Seed Artists"),
       body: Stack(children: [
         SingleChildScrollView(
           child: Column(
@@ -94,6 +93,8 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
                   alignment: WrapAlignment.center,
                   children: _artists
                       .map((artist) => ChoiceChip(
+                            showCheckmark: false,
+                            selectedColor: yellowSunset,
                             label: Text(artist.name),
                             selected: _selectedArtists[artist.id] ?? false,
                             onSelected: (bool selected) {

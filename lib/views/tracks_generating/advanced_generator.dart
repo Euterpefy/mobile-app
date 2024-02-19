@@ -1,13 +1,16 @@
-import 'package:euterpefy/models/SpotifyModels.dart';
-import 'package:euterpefy/models/TracksRequest.dart';
+import 'package:euterpefy/models/spotify_models.dart';
+import 'package:euterpefy/models/tracks_request.dart';
+import 'package:euterpefy/utils/color.dart';
+import 'package:euterpefy/utils/styles/buttons.dart';
 import 'package:euterpefy/views/tracks_generating/artist_selection.dart';
 import 'package:euterpefy/views/tracks_generating/genre_selection.dart';
 import 'package:euterpefy/views/tracks_generating/recommendations.dart';
-import 'package:euterpefy/widgets/CustomSlider.dart';
+import 'package:euterpefy/widgets/custom_appbar.dart';
+import 'package:euterpefy/widgets/custom_slider.dart';
 import 'package:flutter/material.dart';
 
 class AdvancedGenerationScreen extends StatefulWidget {
-  const AdvancedGenerationScreen({Key? key}) : super(key: key);
+  const AdvancedGenerationScreen({super.key});
 
   @override
   State<AdvancedGenerationScreen> createState() =>
@@ -30,10 +33,7 @@ class _AdvancedGenerationScreenState extends State<AdvancedGenerationScreen> {
         selectedGenres.length + selectedArtists.length + selectedTracks.length;
 
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text("Advanced Recommender"),
-        ),
+        appBar: customAppBar(context, "Advanced Recommender"),
         body: Stack(children: [
           Center(
             child: Column(
@@ -76,12 +76,13 @@ class _AdvancedGenerationScreenState extends State<AdvancedGenerationScreen> {
                   )..add(
                       totalSeeds < 5
                           ? (selectedGenres.isEmpty
-                              ? ElevatedButton.icon(
+                              ? OutlinedButton.icon(
                                   onPressed: () =>
                                       _navigateAndDisplayGenreSelection(
                                           context),
                                   label: const Text('Select'),
                                   icon: const Icon(Icons.add),
+                                  style: outlinedButtonStyle(blue),
                                 )
                               : IconButton.filledTonal(
                                   icon: const Icon(Icons.add),

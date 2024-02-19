@@ -1,7 +1,10 @@
-import 'package:euterpefy/models/TracksRequest.dart';
+import 'package:euterpefy/models/tracks_request.dart';
 import 'package:euterpefy/services/api_service.dart';
+import 'package:euterpefy/utils/color.dart';
+import 'package:euterpefy/utils/styles/buttons.dart';
 import 'package:euterpefy/views/tracks_generating/artist_selection.dart';
 import 'package:euterpefy/views/tracks_generating/recommendations.dart';
+import 'package:euterpefy/widgets/custom_appbar.dart';
 import 'package:flutter/material.dart';
 
 class GenreSelectionScreen extends StatefulWidget {
@@ -10,11 +13,10 @@ class GenreSelectionScreen extends StatefulWidget {
   final List<String> selectedGenres;
 
   const GenreSelectionScreen(
-      {Key? key,
+      {super.key,
       this.advanced = false,
       this.limit = 5,
-      this.selectedGenres = const []})
-      : super(key: key);
+      this.selectedGenres = const []});
 
   @override
   State<GenreSelectionScreen> createState() => _GenreSelectionScreenState();
@@ -51,10 +53,7 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Seed Genres'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
+      appBar: customAppBar(context, "Select Seed Genres"),
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -78,6 +77,7 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
                     alignment: WrapAlignment.center,
                     children: _genres
                         .map((genre) => ChoiceChip(
+                              selectedColor: yellowSunset,
                               label: Text(genre),
                               selected: _selectedGenres[genre]!,
                               onSelected: (bool selected) {
@@ -116,11 +116,13 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
                     children: (!widget.advanced)
                         ? [
                             ElevatedButton(
+                              style: elevatedButtonStyle(blue, Colors.white),
                               onPressed: _generateTracks,
                               child: const Text('Generate Tracks'),
                             ),
                             if (getSeedsCount().length < 5)
                               ElevatedButton(
+                                style: outlinedButtonStyle(blue),
                                 onPressed: _selectArtists,
                                 child: const Text('Select Seed Artists'),
                               ),
