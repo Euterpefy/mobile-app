@@ -1,6 +1,6 @@
 import 'package:euterpefy/models/spotify_models.dart';
+import 'package:euterpefy/models/tracks.dart';
 import 'package:euterpefy/models/user.dart';
-import 'package:spotify_sdk/models/track.dart';
 
 class CreatePlaylistRequest {
   final NewPlaylist newPlaylist;
