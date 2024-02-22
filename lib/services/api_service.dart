@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:euterpefy/models/spotify_models.dart';
+import 'package:euterpefy/models/artists.dart';
+import 'package:euterpefy/models/tracks.dart';
 import 'package:euterpefy/models/tracks_request.dart';
 
 import 'package:http/http.dart' as http;
