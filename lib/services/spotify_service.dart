@@ -1,21 +1,60 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:euterpefy/models/albums.dart';
+import 'package:euterpefy/models/artists.dart';
 import 'package:euterpefy/models/categories.dart';
 import 'package:euterpefy/models/euterpefy_playlist.dart';
 import 'package:euterpefy/models/pagination.dart';
-import 'package:euterpefy/models/playlist.dart';
-import 'package:euterpefy/models/spotify_models.dart';
+import 'package:euterpefy/models/playlists.dart';
+import 'package:euterpefy/models/tracks.dart';
 import 'package:euterpefy/models/tracks_request.dart';
+import 'package:euterpefy/models/user.dart';
+import 'package:euterpefy/services/cache_manager.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 
 class SpotifyService {
-  final String accessToken;
+  String accessToken;
+  String refreshToken;
+  DateTime expirationDate;
   final Function onAuthFail;
 
   SpotifyService({
     required this.accessToken,
+    required this.refreshToken,
+    required this.expirationDate,
     required this.onAuthFail,
   });
+
+  static final CacheManager _cacheManager = CacheManager();
+  static DateTime? _rateLimitResetTime;
+
+  // StreamController for emitting playlists as they are generated
+  final StreamController<EuterpefyPlaylist> _playlistStreamController =
+      StreamController.broadcast();
+
+  // Expose the stream of playlists
+  Stream<EuterpefyPlaylist> get playlistStream =>
+      _playlistStreamController.stream;
+
+  // Remember to close the StreamController
+  void dispose() {
+    _playlistStreamController.close();
+  }
+
+  Future<String> getAccessToken() async {
+    // Check if the current token is expired
+    if (DateTime.now().isAfter(expirationDate)) {
+      await refreshAccessToken();
+    }
+    return accessToken;
+  }
+
+  Future<void> refreshAccessToken() async {
+    // Implement the refresh logic here, similar to the exchangeCodeForToken function
+    // Don't forget to update accessToken, refreshToken, and expirationDate accordingly
+    // Also, securely store the new tokens and expiration date
+  }
 
   Future<void> _checkForAuthFailure(Response response) async {
     if (response.statusCode == 401) {
@@ -23,24 +62,118 @@ class SpotifyService {
     }
   }
 
+  Future<dynamic> _getWithCaching(String url) async {
+    // Check cache first
+    if (_cacheManager.has(url)) {
+      print("cached");
+      return _cacheManager.get(url);
+    }
+
+    // Check if we need to respect rate limiting
+    if (_rateLimitResetTime != null &&
+        DateTime.now().isBefore(_rateLimitResetTime!)) {
+      print("rate limited");
+      final waitDuration = _rateLimitResetTime!.difference(DateTime.now());
+      await Future.delayed(waitDuration);
+    }
+
+    final response = await http.get(Uri.parse(url), headers: {
+      'Authorization': 'Bearer $accessToken',
+      'Content-Type': 'application/json',
+    });
+
+    print(response.statusCode);
+    // Handle rate limiting
+    if (response.statusCode == 429) {
+      int waitSeconds = int.parse(response.headers['Retry-After'] ?? '60');
+      _rateLimitResetTime = DateTime.now().add(Duration(seconds: waitSeconds));
+      return Future.delayed(
+          Duration(seconds: waitSeconds), () => _getWithCaching(url));
+    }
+
+    // Reset rate limit reset time on successful request
+    _rateLimitResetTime = null;
+
+    // Cache the successful response
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      _cacheManager.set(url, data,
+          ttl: const Duration(minutes: 5)); // Adjust TTL as needed
+      return data;
+    } else {
+      _checkForAuthFailure(response);
+      // Handle other errors or return null to indicate an issue
+      return null;
+    }
+  }
+
+  Future<dynamic> _postWithHandling(String url, String body) async {
+    // Check rate limiting before making the request.
+    if (_rateLimitResetTime != null &&
+        DateTime.now().isBefore(_rateLimitResetTime!)) {
+      final waitDuration = _rateLimitResetTime!.difference(DateTime.now());
+      await Future.delayed(waitDuration);
+    }
+
+    final response = await http.post(Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+        body: body);
+
+    // Handle rate limiting.
+    if (response.statusCode == 429) {
+      int waitSeconds = int.parse(response.headers['Retry-After'] ?? '60');
+      _rateLimitResetTime = DateTime.now().add(Duration(seconds: waitSeconds));
+      return Future.delayed(
+          Duration(seconds: waitSeconds), () => _postWithHandling(url, body));
+    }
+
+    // Reset rate limit reset time on successful request.
+    _rateLimitResetTime = null;
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      _checkForAuthFailure(response);
+      // Handle other errors or return null to indicate an issue.
+      return null;
+    }
+  }
+
+  Future<User?> fetchUserProfile() async {
+    var response = await http.get(
+      Uri.parse('https://api.spotify.com/v1/me'),
+      headers: {'Authorization': 'Bearer $accessToken'},
+    );
+    if (response.statusCode == 200) {
+      var data = json.decode(response.body);
+      // Create a User object from the data
+      var user = User.fromJson(data);
+      // Update global user state
+
+      return user;
+    }
+
+    return null;
+  }
+
   Future<PagedResponse<SimplifiedPlaylist>?> getUserPlaylists(String userId,
       {int limit = 20, int offset = 0}) async {
     final url =
         'https://api.spotify.com/v1/users/$userId/playlists?limit=$limit&offset=$offset';
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-    );
-    _checkForAuthFailure(response);
-    if (response.statusCode == 200) {
-      final body = json.decode(response.body);
+
+    // Fetch data using the caching method.
+    // _getWithCaching now returns the decoded JSON directly, or null.
+    final data = await _getWithCaching(url);
+
+    if (data != null) {
+      // Directly work with the returned data, assuming it's already decoded JSON.
       return PagedResponse.fromJson(
-          body, (itemJson) => SimplifiedPlaylist.fromJson(itemJson));
+          data, (itemJson) => SimplifiedPlaylist.fromJson(itemJson));
     } else {
-      // Handle errors or return null to indicate an issue.
+      // If data is null, it indicates an error or data is not available/cached.
       return null;
     }
   }
@@ -50,15 +183,19 @@ class SpotifyService {
     bool morePages = true;
 
     while (morePages) {
-      final response = await getUserPlaylists(userId, offset: offset);
+      // Fetch the paged response for user playlists.
+      final pagedResponse = await getUserPlaylists(userId, offset: offset);
 
-      if (response != null && response.items.isNotEmpty) {
-        for (var playlist in response.items) {
+      if (pagedResponse != null && pagedResponse.items.isNotEmpty) {
+        // Yield each playlist in the current page.
+        for (var playlist in pagedResponse.items) {
           yield playlist;
         }
-        offset += response.limit;
-        morePages = response.next != null;
+        // Prepare to fetch the next page.
+        offset += pagedResponse.limit;
+        morePages = pagedResponse.next != null;
       } else {
+        // No more pages to fetch.
         morePages = false;
       }
     }
@@ -76,17 +213,8 @@ class SpotifyService {
       'description': description,
     });
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-      body: body,
-    );
-    _checkForAuthFailure(response);
-    if (response.statusCode == 201) {
-      final data = json.decode(response.body);
+    final data = await _postWithHandling(url, body);
+    if (data != null) {
       return Playlist.fromJson(data);
     } else {
       // Handle errors or return null to indicate an issue.
@@ -100,31 +228,14 @@ class SpotifyService {
     final body = jsonEncode(
         {'uris': trackIds.map((id) => 'spotify:track:$id').toList()});
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-      body: body,
-    );
-    _checkForAuthFailure(response);
-    return response.statusCode == 201;
+    final data = await _postWithHandling(url, body);
+    return data != null; // True if the operation was successful.
   }
 
-  // Assuming Track.fromJson is a constructor to parse track data
   Future<List<Track>> fetchPlaylistTracks(String playlistId) async {
     final url = 'https://api.spotify.com/v1/playlists/$playlistId/tracks';
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-    );
-    _checkForAuthFailure(response);
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
+    final data = await _getWithCaching(url);
+    if (data != null) {
       List<Track> tracks = [];
       for (var item in data['items']) {
         if (item['track'] != null) {
@@ -140,85 +251,47 @@ class SpotifyService {
 
   Future<List<Category>> fetchBrowseCategories(
       {String? locale, int limit = 20, int offset = 0}) async {
-    // Construct the URL with query parameters for locale, limit, and offset
     String url = 'https://api.spotify.com/v1/browse/categories';
-    List<String> queryParams = [];
-    if (locale != null) {
-      queryParams.add('locale=$locale');
-    }
-    queryParams.add('limit=$limit');
-    queryParams.add('offset=$offset');
-    // Join all query parameters with '&' and append to the base URL
-    String queryString = queryParams.join('&');
-    if (queryParams.isNotEmpty) {
-      url += '?$queryString';
-    }
+    Map<String, dynamic> queryParams = {
+      if (locale != null) 'locale': locale,
+      'limit': limit.toString(),
+      'offset': offset.toString(),
+    };
+
+    final queryString = Uri(queryParameters: queryParams).query;
+    url += '?$queryString';
 
     List<Category> categories = [];
-
-    try {
-      var nextUrl = url;
-      while (nextUrl.isNotEmpty) {
-        final response = await http.get(
-          Uri.parse(nextUrl),
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-            'Content-Type': 'application/json',
-          },
-        );
-
-        _checkForAuthFailure(response);
-
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          final items = data['categories']['items'] as List;
-          categories.addAll(
-              items.map((itemJson) => Category.fromJson(itemJson)).toList());
-
-          // Prepare next URL for pagination, if available
-          nextUrl = data['categories']['next'] ?? '';
-        } else {
-          // Handle error or break if status is not 200
-          throw Exception('Error fetching categories: ${response.statusCode}');
-        }
-      }
-    } catch (e) {
-      throw Exception('Exception fetching categories: $e');
+    dynamic data = await _getWithCaching(url);
+    if (data != null) {
+      final items = data['categories']['items'] as List;
+      categories.addAll(
+          items.map((itemJson) => Category.fromJson(itemJson)).toList());
     }
-
     return categories;
   }
 
   Future<List<SimplifiedPlaylist>> fetchAllCategoryPlaylists(
       String categoryId) async {
     List<SimplifiedPlaylist> allPlaylists = [];
-    String? nextUrl =
-        'https://api.spotify.com/v1/browse/categories/$categoryId/playlists';
+    String url =
+        'https://api.spotify.com/v1/browse/categories/$categoryId/playlists?limit=20'; // Assuming a default limit of 20 for simplicity
 
-    while (nextUrl != null) {
-      final response = await http.get(
-        Uri.parse(nextUrl),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-      );
-      _checkForAuthFailure(response);
-      if (response.statusCode == 200) {
-        final body = json.decode(response.body);
-        final playlistsJson = body['playlists']['items'] as List;
-        List<SimplifiedPlaylist> playlists = playlistsJson
-            .map((playlistJson) => SimplifiedPlaylist.fromJson(playlistJson))
-            .toList();
-        allPlaylists.addAll(playlists);
-        // Check if there's a next page
-        nextUrl = body['playlists']['next'];
+    dynamic data = await _getWithCaching(url);
+    while (data != null) {
+      final playlistsJson = data['playlists']['items'] as List;
+      List<SimplifiedPlaylist> playlists = playlistsJson
+          .map((playlistJson) => SimplifiedPlaylist.fromJson(playlistJson))
+          .toList();
+      allPlaylists.addAll(playlists);
+
+      String? nextUrl = data['playlists']['next'];
+      if (nextUrl != null) {
+        data = await _getWithCaching(nextUrl);
       } else {
-        // Handle errors or throw an exception
-        throw Exception('Failed to load category playlists');
+        break; // Exit the loop if there is no next page
       }
     }
-
     return allPlaylists;
   }
 
@@ -227,82 +300,77 @@ class SpotifyService {
     int limit = 20,
     int offset = 0,
   }) async {
-    String url = 'https://api.spotify.com/v1/browse/featured-playlists';
-    List<String> queryParams = [];
-    if (locale != null) {
-      queryParams.add('locale=$locale');
-    }
-    queryParams.add('limit=$limit');
-    queryParams.add('offset=$offset');
-    String queryString = queryParams.join('&');
-    if (queryParams.isNotEmpty) {
-      url += '?$queryString';
-    }
+    Map<String, dynamic> queryParams = {
+      'limit': limit.toString(),
+      'offset': offset.toString(),
+      if (locale != null) 'locale': locale,
+    };
 
-    List<SimplifiedPlaylist> playlists = [];
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-    );
+    final queryString = Uri(queryParameters: queryParams).query;
+    String url =
+        'https://api.spotify.com/v1/browse/featured-playlists?$queryString';
 
-    await _checkForAuthFailure(response);
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final playlistsJson = data['playlists']['items'] as List;
-      playlists = playlistsJson
-          .map((playlistJson) => SimplifiedPlaylist.fromJson(playlistJson))
-          .toList();
-    } else {
-      // Handle errors or throw an exception
-      throw Exception(
-          'Failed to load featured playlists: ${response.statusCode}');
-    }
-
-    return playlists;
+    dynamic data = await _getWithCaching(url);
+    if (data == null) return [];
+    final playlistsJson = data['playlists']['items'] as List;
+    return playlistsJson
+        .map((json) => SimplifiedPlaylist.fromJson(json))
+        .toList();
   }
 
-  Future<List<Artist>> fetchTopArtists(
-      {String timeRange = 'medium_term',
-      int limit = 20,
-      int offset = 0}) async {
+  Future<Album?> fetchAlbum(String albumId) async {
+    String url = 'https://api.spotify.com/v1/albums/$albumId';
+    dynamic data = await _getWithCaching(url);
+    if (data == null) return null;
+    return Album.fromJson(data);
+  }
+
+  Future<List<SimplifiedAlbum>> fetchNewAlbums({
+    String? locale,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    Map<String, dynamic> queryParams = {
+      'limit': limit.toString(),
+      'offset': offset.toString(),
+      if (locale != null) 'locale': locale,
+    };
+
+    final queryString = Uri(queryParameters: queryParams).query;
+    String url = 'https://api.spotify.com/v1/browse/new-releases?$queryString';
+
+    dynamic data = await _getWithCaching(url);
+    if (data == null) return [];
+    final playlistsJson = data['albums']['items'] as List;
+    return playlistsJson.map((json) => SimplifiedAlbum.fromJson(json)).toList();
+  }
+
+  Future<List<Artist>> fetchTopArtists({
+    String timeRange = 'medium_term',
+    int limit = 20,
+    int offset = 0,
+  }) async {
     final url =
         'https://api.spotify.com/v1/me/top/artists?time_range=$timeRange&limit=$limit&offset=$offset';
-    final response = await http.get(Uri.parse(url), headers: {
-      'Authorization': 'Bearer $accessToken',
-      'Content-Type': 'application/json',
-    });
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final items = data['items'] as List;
-      return items.map((itemJson) => Artist.fromJson(itemJson)).toList();
-    } else {
-      throw Exception('Failed to fetch top artists');
-    }
+    dynamic data = await _getWithCaching(url);
+    if (data == null) return [];
+    final items = data['items'] as List;
+    return items.map((json) => Artist.fromJson(json)).toList();
   }
 
-  Future<List<Track>> fetchTopTracks(
-      {String timeRange = 'medium_term',
-      int limit = 20,
-      int offset = 0}) async {
+  Future<List<Track>> fetchTopTracks({
+    String timeRange = 'medium_term',
+    int limit = 20,
+    int offset = 0,
+  }) async {
     final url =
         'https://api.spotify.com/v1/me/top/tracks?time_range=$timeRange&limit=$limit&offset=$offset';
-    final response = await http.get(Uri.parse(url), headers: {
-      'Authorization': 'Bearer $accessToken',
-      'Content-Type': 'application/json',
-    });
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final items = data['items'] as List;
-      return items.map((itemJson) => Track.fromJson(itemJson)).toList();
-    } else {
-      throw Exception('Failed to fetch top tracks');
-    }
+    dynamic data = await _getWithCaching(url);
+    if (data == null) return [];
+    final items = data['items'] as List;
+    return items.map((json) => Track.fromJson(json)).toList();
   }
 
   Future<List<Artist>> fetchAllTopArtists(
@@ -315,13 +383,8 @@ class SpotifyService {
     while (moreAvailable) {
       final url =
           'https://api.spotify.com/v1/me/top/artists?time_range=$timeRange&limit=$limit&offset=$offset';
-      final response = await http.get(Uri.parse(url), headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      });
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      dynamic data = await _getWithCaching(url);
+      if (data != null) {
         final List<dynamic> items = data['items'];
         allArtists.addAll(
             items.map((itemJson) => Artist.fromJson(itemJson)).toList());
@@ -332,7 +395,7 @@ class SpotifyService {
           offset += limit;
         }
       } else {
-        throw Exception('Failed to fetch all top artists');
+        moreAvailable = false;
       }
     }
 
@@ -349,13 +412,9 @@ class SpotifyService {
     while (moreAvailable) {
       final url =
           'https://api.spotify.com/v1/me/top/tracks?time_range=$timeRange&limit=$limit&offset=$offset';
-      final response = await http.get(Uri.parse(url), headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      });
+      dynamic data = await _getWithCaching(url);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (data != null) {
         final List<dynamic> items = data['items'];
         allTracks
             .addAll(items.map((itemJson) => Track.fromJson(itemJson)).toList());
@@ -366,7 +425,7 @@ class SpotifyService {
           offset += limit;
         }
       } else {
-        throw Exception('Failed to fetch all top tracks');
+        moreAvailable = false;
       }
     }
 
@@ -376,78 +435,47 @@ class SpotifyService {
   Future<List<Track>> generateRecommendations(
       TracksRequest tracksRequest) async {
     final queryParams = tracksRequest.toJson();
-
     queryParams.removeWhere(
         (key, value) => value == null || value.toString() == 'null');
-
-    // Convert queryParams to a string that can be appended to the URL
     final queryString = Uri(queryParameters: queryParams).query;
     final url = 'https://api.spotify.com/v1/recommendations?$queryString';
-    final response = await http.get(Uri.parse(url), headers: {
-      'Authorization': 'Bearer $accessToken',
-      'Content-Type': 'application/json',
-    });
+    dynamic data = await _getWithCaching(url);
 
-    await _checkForAuthFailure(response);
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
+    if (data != null) {
       final List<dynamic> tracksJson = data['tracks'];
-      List<Track> tracks =
-          tracksJson.map((trackJson) => Track.fromJson(trackJson)).toList();
-      return tracks;
+      return tracksJson.map((trackJson) => Track.fromJson(trackJson)).toList();
     } else {
-      // Handle errors or throw an exception
-      throw Exception(
-          'Failed to generate recommendations: ${response.statusCode}');
+      // If there's no data, return an empty list or handle the error appropriately
+      return [];
     }
   }
 
-  Future<List<EuterpefyPlaylist>> generateAppPlaylists() async {
-    // Fetch top tracks and artists
+  Future<void> generateAndEmitPlaylists(
+      {int genresBasedPlaylistAmount = 3}) async {
     final topTracks = await fetchTopTracks(limit: 5);
-    final topArtists = await fetchTopArtists(limit: 5);
 
-    // Seed IDs for recommendations
-    final seedTracks = topTracks.map((track) => track.id).toList();
-    final seedArtists = topArtists.map((artist) => artist.id).toList();
+    // Assuming you have a method to generate a playlist from tracks
+    await Future.delayed(const Duration(seconds: 1));
+    final trackBasedPlaylist = await generatePlaylistFromTracks(topTracks);
+    _playlistStreamController.add(trackBasedPlaylist); // Emit the playlist
 
-    // Generate recommendations
-    final trackBasedRecommendations = await generateRecommendations(
-        TracksRequest(seedTracks: seedTracks, limit: 50));
-
-    final artistBasedRecommendations = await generateRecommendations(
-        TracksRequest(seedArtists: seedArtists, limit: 50));
-    // Create EuterpefyPlaylist instances
-    return [
-      EuterpefyPlaylist(
-        name: "Inspired by Your Top Tracks",
-        description: "A playlist generated from your top tracks.",
-        tracks: trackBasedRecommendations,
-      ),
-      EuterpefyPlaylist(
-        name: "Inspired by Your Top Artists",
-        description: "A playlist generated from your top artists.",
-        tracks: artistBasedRecommendations,
-      ),
-      // Add other playlists here based on additional concepts you explore
-    ];
-  }
-
-  Future<List<EuterpefyPlaylist>> generateGenreBasedPlaylists() async {
+    await Future.delayed(const Duration(seconds: 1));
     final topArtists = await fetchTopArtists(limit: 20);
+    await Future.delayed(const Duration(seconds: 1));
+    final artistBasedPlaylist =
+        await generatePlaylistFromArtists(topArtists.take(5).toList());
+    _playlistStreamController.add(artistBasedPlaylist); // Emit the playlist
 
     // Extract genres from top artists
     Set<String> uniqueGenres = {};
     for (var artist in topArtists) {
       uniqueGenres.addAll(artist.genres);
-      if (uniqueGenres.length >= 3) {
+      if (uniqueGenres.length >= genresBasedPlaylistAmount) {
         break; // Stop after collecting three unique genres
       }
     }
-    List<String> topGenres = uniqueGenres.take(3).toList();
-
-    List<EuterpefyPlaylist> playlists = [];
+    List<String> topGenres =
+        uniqueGenres.take(genresBasedPlaylistAmount).toList();
 
     for (String genre in topGenres) {
       // Find top artists with the genre
@@ -459,19 +487,50 @@ class SpotifyService {
 
       // Generate recommendations for each genre with the top artists as seeds
       List<Track> playlistTracks = await generateRecommendations(TracksRequest(
-        seedGenres: [genre],
-        seedArtists: genreTopArtistIds,
-        limit: 50,
-      ));
+          seedGenres: [genre],
+          seedArtists: genreTopArtistIds,
+          limit: 50,
+          minPopularity: 40));
 
       // Create and add the playlist
-      playlists.add(EuterpefyPlaylist(
+      _playlistStreamController.add(EuterpefyPlaylist(
         name: "This is $genre",
         description: "A playlist inspired by your interest in $genre.",
         tracks: playlistTracks,
       ));
-    }
 
-    return playlists;
+      await Future.delayed(
+          const Duration(seconds: 3)); // Simulate delay for loading
+    }
+  }
+
+  Future<EuterpefyPlaylist> generatePlaylistFromTracks(
+      List<Track> tracks) async {
+    // Seed IDs for recommendations
+    final seedTracks = tracks.map((track) => track.id).toList();
+    // Generate recommendations
+    final recommendations = await generateRecommendations(
+        TracksRequest(seedTracks: seedTracks, limit: 50, minPopularity: 40));
+
+    return EuterpefyPlaylist(
+      name: "Inspired by Your Top Tracks",
+      description: "A playlist generated from your top tracks.",
+      tracks: recommendations,
+    );
+  }
+
+  Future<EuterpefyPlaylist> generatePlaylistFromArtists(
+      List<Artist> artists) async {
+    // Seed IDs for recommendations
+    final seedArtists = artists.map((track) => track.id).toList();
+    // Generate recommendations
+    final recommendations = await generateRecommendations(
+        TracksRequest(seedArtists: seedArtists, limit: 50, minPopularity: 40));
+
+    return EuterpefyPlaylist(
+      name: "Inspired by Your Top Artists",
+      description: "A playlist generated from your top artists.",
+      tracks: recommendations,
+    );
   }
 }
