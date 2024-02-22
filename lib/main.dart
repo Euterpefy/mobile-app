@@ -1,5 +1,5 @@
-import 'package:euterpefy/utils/color.dart';
 import 'package:euterpefy/utils/providers/app_context.dart';
+import 'package:euterpefy/utils/services/auth/refresh_token.dart';
 import 'package:euterpefy/views/home/home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -13,46 +13,73 @@ import 'models/user.dart';
 Future<void> main() async {
   await dotenv.load(fileName: '.env');
   const storage = FlutterSecureStorage();
-  String? token = await storage.read(key: 'spotifyToken');
-  runApp(MyApp(token: token));
+  String? refreshToken = await storage.read(key: 'refreshToken');
+
+  runApp(MyApp(refreshToken: refreshToken));
 }
 
 class MyApp extends StatelessWidget {
-  final String? token;
-  const MyApp({super.key, this.token});
+  final String? refreshToken;
+  const MyApp({super.key, this.refreshToken});
+
+  ThemeData _lightTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color.fromARGB(255, 211, 226, 255),
+      ),
+    );
+  }
+
+  ThemeData _darkTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xff293241),
+        brightness: Brightness.dark,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (context) {
         final appContext = AppContext();
-        if (token != null) {
-          _initContext(appContext, token!);
+        if (refreshToken != null) {
+          _initContext(appContext, refreshToken!);
         }
         return appContext;
       },
       child: MaterialApp(
         title: 'Euterpefy',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: blue),
-          useMaterial3: true,
-        ),
+        theme: _lightTheme(), // Use the light theme
+        darkTheme: _darkTheme(), // Use the dark theme
+        themeMode: ThemeMode.system, // Use system theme mode
         home: const HomePage(title: 'Music Recommender'),
       ),
     );
   }
 
-  Future<void> _initContext(AppContext appContext, String token) async {
-    appContext.setToken(token);
+  Future<void> _initContext(AppContext appContext, String refreshToken) async {
+    // get new access token, refreshToken and expiration date
+    final tokens = await refreshAccessToken(refreshToken);
+    if (tokens == null) {
+      return;
+    }
+    String newAccessToken = tokens['accessToken'];
+    String newRefreshToken = tokens['refreshToken'];
+    DateTime newExpriationDate = DateTime.parse(tokens['expirationDate']);
     // Optionally initialize SpotifyService here if needed for initial data fetch
     // Fetch user profile
     final response = await http.get(
       Uri.parse('https://api.spotify.com/v1/me'),
-      headers: {'Authorization': 'Bearer $token'},
+      headers: {'Authorization': 'Bearer $newAccessToken'},
     );
     if (response.statusCode == 200) {
       var data = json.decode(response.body);
-      appContext.setUser(User.fromJson(data));
+      appContext.login(User.fromJson(data), newAccessToken, newRefreshToken,
+          newExpriationDate);
     }
   }
 }
