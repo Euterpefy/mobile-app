@@ -1,6 +1,6 @@
+import 'package:euterpefy/models/tracks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:euterpefy/models/spotify_models.dart'; // Assuming Track model is here
 
 class SlidableTrackItem extends StatelessWidget {
   final Track track;

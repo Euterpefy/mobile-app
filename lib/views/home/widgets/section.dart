@@ -44,6 +44,6 @@ class Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(padding: const EdgeInsets.only(bottom: 8.0), child: child);
+    return Padding(padding: const EdgeInsets.only(bottom: 16.0), child: child);
   }
 }

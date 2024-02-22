@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:euterpefy/models/euterpefy_playlist.dart';
-import 'package:euterpefy/utils/color.dart';
 import 'package:euterpefy/utils/providers/app_context.dart';
 import 'package:euterpefy/views/home/widgets/section.dart';
 import 'package:euterpefy/views/playlist/playlist_importing.dart';
@@ -17,52 +18,81 @@ class EuterpefyPlaylistSection extends StatefulWidget {
 }
 
 class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
-  Future<List<EuterpefyPlaylist>>? _playlistsFuture;
+  final List<EuterpefyPlaylist> _playlists = [];
+  StreamSubscription<EuterpefyPlaylist>? _playlistSubscription;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _playlistsFuture = _loadPlaylists();
+  void initState() {
+    super.initState();
+    initPlaylists();
+
+    // Listen to changes in AppContext
+    final appContext = Provider.of<AppContext>(context, listen: false);
+    appContext.addListener(initPlaylists);
   }
 
-  Future<List<EuterpefyPlaylist>> _loadPlaylists() async {
-    final appContext = Provider.of<AppContext>(context);
-    final spotifyService = appContext.spotifyService;
+  @override
+  void dispose() {
+    // Cancel the stream subscription to prevent memory leaks
+    _playlistSubscription?.cancel();
+    Provider.of<AppContext>(context, listen: false)
+        .removeListener(initPlaylists);
+    super.dispose();
+  }
+
+  void initPlaylists() {
+    final spotifyService =
+        Provider.of<AppContext>(context, listen: false).spotifyService;
+
+    // Clear existing data and subscription to start fresh
+    setState(() => _playlists.clear());
+    _playlistSubscription?.cancel();
+
     if (spotifyService != null) {
-      final appPlaylists = await spotifyService.generateAppPlaylists();
-      final genreBasedPlaylists =
-          await spotifyService.generateGenreBasedPlaylists();
-      return [...appPlaylists, ...genreBasedPlaylists];
+      spotifyService.generateAndEmitPlaylists();
+      _playlistSubscription = spotifyService.playlistStream.listen(
+        (playlist) {
+          setState(() {
+            _playlists.add(playlist);
+          });
+        },
+        onError: (error) {
+          print("Error receiving playlist: $error");
+        },
+      );
     } else {
-      return [];
+      // Spotify service is null, indicating the user is not logged in
+      setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<EuterpefyPlaylist>>(
-      future: _playlistsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        } else if (snapshot.hasError) {
-          return Text('${snapshot.error}');
-        } else if (snapshot.data!.isEmpty) {
-          return const SizedBox.shrink(); // No playlists available
-        } else {
-          // Playlists are loaded
-          return Column(
-            children: [
-              const SectionTitle(title: "For You"),
-              Column(
-                children: snapshot.data!
-                    .map((playlist) => _buildPlaylistCard(context, playlist))
-                    .toList(),
-              ),
-            ],
-          );
-        }
-      },
+    final spotifyService =
+        Provider.of<AppContext>(context, listen: false).spotifyService;
+    // If not logged in, show login prompt
+    if (_playlists.isEmpty) {
+      if (spotifyService == null) {
+        return const Center(
+          child: Text('Log in for more features'),
+        );
+      } else {
+        return const Center(
+          child: Text('Generating playlists for you..'),
+        );
+      }
+    }
+
+    // Proceed with building the UI as before
+    return Column(
+      children: [
+        const SectionTitle(title: "For You"),
+        Column(
+          children: _playlists
+              .map((playlist) => _buildPlaylistCard(context, playlist))
+              .toList(),
+        ),
+      ],
     );
   }
 
@@ -83,7 +113,7 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
       },
       child: Card(
         elevation: 4.0,
-        color: theme.colorScheme.secondary,
+        color: theme.colorScheme.secondaryContainer,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
         child: Padding(
           padding: const EdgeInsets.all(10.0),
@@ -95,8 +125,8 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
                 padding: const EdgeInsets.only(top: 4.0),
                 child: Text(
                   playlist.name,
-                  style: const TextStyle(
-                      color: whiteFloral,
+                  style: TextStyle(
+                      color: theme.colorScheme.onSecondaryContainer,
                       fontSize: 18,
                       fontWeight: FontWeight.w500),
                 ),
@@ -105,7 +135,7 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
                 Text(
                   playlist.description!,
                   style: theme.textTheme.labelMedium!.copyWith(
-                      color: theme.colorScheme.onSecondary,
+                      color: theme.colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.w400),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

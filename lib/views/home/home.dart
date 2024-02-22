@@ -1,23 +1,12 @@
 // lib/views/home/home.dart
-
-// ignore_for_file: use_build_context_synchronously
-
-import 'package:euterpefy/models/user.dart';
-import 'package:euterpefy/utils/providers/app_context.dart';
-import 'package:euterpefy/views/home/widgets/browse_section.dart';
-import 'package:euterpefy/views/home/widgets/euterperfy_playlists.dart';
-import 'package:euterpefy/views/home/widgets/featured_playlists.dart';
-import 'package:euterpefy/views/home/widgets/generating_section.dart';
-import 'package:euterpefy/views/home/widgets/drawer.dart';
-import 'package:euterpefy/views/home/widgets/section.dart';
-import 'package:euterpefy/widgets/custom_appbar.dart';
-import 'package:euterpefy/utils/services/spotify/get_token.dart';
+import 'package:euterpefy/utils/styles/buttons.dart';
+import 'package:euterpefy/views/home/tabs/account.dart';
+import 'package:euterpefy/views/home/tabs/explore.dart';
+import 'package:euterpefy/views/home/tabs/browse.dart';
+import 'package:euterpefy/views/tracks_generating/advanced_generator.dart';
+import 'package:euterpefy/views/tracks_generating/genre_selection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
-import 'package:provider/provider.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.title});
@@ -29,79 +18,108 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _storage = const FlutterSecureStorage();
+  int _selectedIndex = 0;
+
+  final PageController _pageController = PageController();
+
   @override
   void initState() {
     super.initState();
   }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      duration: const Duration(seconds: 2),
-    ));
-  }
-
-  Future<void> login() async {
-    final token = await getTokenOrLogin(context);
-    if (token != null) {
-      await _storage.write(key: 'spotifyToken', value: token);
-      _fetchUserProfile(token);
-      Navigator.pop(context); // Close the drawer
-      _showSnackBar('Logged in successfully');
-    }
-  }
-
-  Future<void> logout() async {
-    await _storage.delete(key: 'spotifyToken');
-
-    Navigator.pop(context); // Close the drawer
-    _showSnackBar('Logged out successfully');
-
-    Provider.of<AppContext>(context, listen: false)
-        .logout(); // Update AppContext state
-  }
-
-  Future<void> _fetchUserProfile(String token) async {
-    var response = await http.get(
-      Uri.parse('https://api.spotify.com/v1/me'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (response.statusCode == 200) {
-      var data = json.decode(response.body);
-      // Create a User object from the data
-      var user = User.fromJson(data);
-      // Update global user state
-
-      Provider.of<AppContext>(context, listen: false).login(user, token);
-    } else {
-      await _storage.delete(key: 'spotifyToken');
-
-      Provider.of<AppContext>(context, listen: false).logout();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: customAppBar(context, widget.title),
-      drawer: CustomDrawer(
-        login: login,
-        logout: logout,
+      backgroundColor: theme.colorScheme.background,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() => _selectedIndex = index);
+              },
+              itemBuilder: (_, index) {
+                switch (index) {
+                  case 0:
+                    return const SpotifyBrowsingTab();
+                  case 1:
+                    return const ExploreTab();
+                  case 2:
+                    return const AccountTab();
+                  default:
+                    return const SpotifyBrowsingTab(); // Fallback
+                }
+              },
+              itemCount: 3, // Total number of tabs
+            ),
+            if (_selectedIndex != 2) // Only show for Explore and Home tabs
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: generateButtons(theme),
+              ),
+          ],
+        ),
       ),
-      body: const SingleChildScrollView(
-        // Wrap the content with SingleChildScrollView
+      bottomNavigationBar: Container(
+        color: theme.colorScheme.primaryContainer,
         child: Padding(
-          padding: EdgeInsets.all(8.0),
-          child: Column(
-            children: [
-              Section(child: BrowseSection()),
-              Section(child: PlaylistGeneratingSection()),
-              Section(child: FeaturedPlaylistsSection()),
-              EuterpefyPlaylistSection(),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          child: GNav(
+            backgroundColor: theme.colorScheme.primaryContainer,
+            padding: const EdgeInsets.all(8.0),
+            gap: 8.0,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+            activeColor: Theme.of(context).colorScheme.onPrimary,
+            tabBackgroundColor: Theme.of(context).colorScheme.primary,
+            selectedIndex: _selectedIndex,
+            onTabChange: (index) {
+              _pageController
+                  .jumpToPage(index); // Use PageController to switch pages
+            },
+            tabs: const [
+              GButton(icon: Icons.search, text: 'Browse'),
+              GButton(icon: Icons.explore, text: 'Explore'),
+              GButton(icon: Icons.person, text: 'Account'),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget generateButtons(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const GenreSelectionScreen()),
+              );
+            },
+            style: elevatedButtonStyle(theme.colorScheme.inversePrimary,
+                theme.colorScheme.inverseSurface),
+            child: const Text('Quick Generating'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const AdvancedGenerationScreen()),
+              );
+            },
+            style: elevatedButtonStyle(theme.colorScheme.primaryContainer,
+                theme.colorScheme.onPrimaryContainer),
+            child: const Text('Advanced Generating'),
+          ),
+        ],
       ),
     );
   }

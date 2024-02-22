@@ -1,5 +1,5 @@
-import 'package:euterpefy/models/playlist.dart';
-import 'package:euterpefy/models/spotify_models.dart';
+import 'package:euterpefy/models/playlists.dart';
+import 'package:euterpefy/models/tracks.dart';
 import 'package:euterpefy/utils/providers/app_context.dart';
 import 'package:euterpefy/widgets/custom_appbar.dart';
 import 'package:euterpefy/widgets/playlist_imports/import_ask_dialog.dart';
@@ -24,9 +24,9 @@ class PlaylistImportView extends StatefulWidget {
 }
 
 class _PlaylistImportViewState extends State<PlaylistImportView> {
+  late List<Track> _tracks;
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _playingTrackId;
-  late List<Track> _tracks;
 
   @override
   void initState() {
@@ -113,8 +113,7 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
     final appContext = Provider.of<AppContext>(context, listen: false);
     final user = appContext.user;
     final spotifyService = appContext.spotifyService;
-    final token = appContext.token;
-    if (spotifyService == null || user == null || token == null) {
+    if (spotifyService == null || user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please log in to import playlists.')));
       return;
@@ -137,7 +136,7 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
                   onCreate: (playlistName, isPublic, isCollaborative,
                       description) async {
                     _createPlaylist(
-                        token,
+                        await spotifyService.getAccessToken(),
                         playlistName,
                         isPublic,
                         isCollaborative,

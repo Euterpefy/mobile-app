@@ -1,6 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'package:euterpefy/models/playlist.dart';
+import 'package:euterpefy/models/playlists.dart';
 import 'package:euterpefy/services/spotify_service.dart';
 import 'package:euterpefy/utils/providers/app_context.dart';
 import 'package:euterpefy/views/playlist/playlist_importing.dart';
@@ -19,15 +19,13 @@ class CategoryPlaylistsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Access the AppContext to check for the token
-    final appContext = Provider.of<AppContext>(context, listen: false);
-
-    final String? token = appContext.token;
+    final appContext = Provider.of<AppContext>(context);
 
     final spotifyService = appContext.spotifyService;
 
     return Scaffold(
       appBar: customAppBar(context, 'Playlists: $categoryName'),
-      body: token != null
+      body: spotifyService != null
           ? _buildPlaylistsView(spotifyService, categoryId)
           : _buildLoginPrompt(),
     );

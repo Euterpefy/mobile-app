@@ -1,4 +1,4 @@
-import 'package:euterpefy/models/spotify_models.dart';
+import 'package:euterpefy/models/tracks.dart';
 import 'package:euterpefy/models/tracks_request.dart';
 import 'package:euterpefy/services/api_service.dart';
 import 'package:euterpefy/views/playlist/playlist_importing.dart';

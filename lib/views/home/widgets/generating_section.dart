@@ -15,6 +15,7 @@ class PlaylistGeneratingSection extends StatefulWidget {
 class _PlaylistGeneratingSectionState extends State<PlaylistGeneratingSection> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       children: [
         const SectionTitle(title: 'Generate your playlists'),
@@ -29,7 +30,7 @@ class _PlaylistGeneratingSectionState extends State<PlaylistGeneratingSection> {
                       builder: (context) => const GenreSelectionScreen()),
                 );
               },
-              style: outlinedButtonStyle(Theme.of(context).colorScheme.primary),
+              style: outlinedButtonStyle(theme.colorScheme.onPrimaryContainer),
               child: const Text('Quick Generating'),
             ),
             ElevatedButton(
@@ -40,8 +41,8 @@ class _PlaylistGeneratingSectionState extends State<PlaylistGeneratingSection> {
                       builder: (context) => const AdvancedGenerationScreen()),
                 );
               },
-              style: elevatedButtonStyle(
-                  Theme.of(context).colorScheme.primary, Colors.white),
+              style: elevatedButtonStyle(theme.colorScheme.primaryContainer,
+                  theme.colorScheme.onPrimaryContainer),
               child: const Text('Advanced Generating'),
             ),
           ],

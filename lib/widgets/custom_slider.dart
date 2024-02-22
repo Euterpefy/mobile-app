@@ -11,7 +11,7 @@ class CustomRangeSlider extends StatelessWidget {
   final String? description; // Optional property for the description
 
   const CustomRangeSlider({
-    Key? key,
+    super.key,
     required this.label,
     required this.rangeValues,
     required this.min,
@@ -20,7 +20,7 @@ class CustomRangeSlider extends StatelessWidget {
     required this.onChanged,
     this.decimalPlaces = 2, // Default to 2 decimal places
     this.description, // Initialize the optional description property
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
