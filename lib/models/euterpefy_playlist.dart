@@ -1,4 +1,4 @@
-import 'package:euterpefy/models/spotify_models.dart';
+import 'package:euterpefy/models/tracks.dart';
 
 class EuterpefyPlaylist {
   final String name;
