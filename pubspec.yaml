@@ -42,8 +42,11 @@ dependencies:
 
   audioplayers: ^5.2.1
   http: ^1.2.0 # Ensure this line is added, check for the latest version
-  spotify_sdk: ^2.3.1
   flutter_slidable: ^3.0.1
+  google_nav_bar: ^5.0.6
+  url_launcher: ^6.2.4
+  webview_flutter: ^4.7.0
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
