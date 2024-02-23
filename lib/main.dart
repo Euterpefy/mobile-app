@@ -3,7 +3,6 @@ import 'package:euterpefy/utils/services/auth/refresh_token.dart';
 import 'package:euterpefy/views/home/home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -25,15 +24,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     ThemeData lightTheme() {
       return ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color.fromARGB(255, 211, 226, 255),
-          ),
-          textTheme: GoogleFonts.ubuntuTextTheme(textTheme));
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromARGB(255, 211, 226, 255),
+        ),
+      );
     }
 
     ThemeData darkTheme() {
@@ -42,8 +39,7 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xff293241),
             brightness: Brightness.dark,
-          ),
-          textTheme: GoogleFonts.ubuntuTextTheme(textTheme));
+          ));
     }
 
     return ChangeNotifierProvider(

@@ -49,8 +49,6 @@ dependencies:
   webview_flutter: ^4.7.0
   crypto: ^3.0.3
 
-  google_fonts: ^6.1.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
