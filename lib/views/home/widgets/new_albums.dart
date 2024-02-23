@@ -15,7 +15,7 @@ class NewAlbumsSection extends StatefulWidget {
   const NewAlbumsSection({
     super.key,
     this.locale,
-    this.sectionTitle = "New Album Releases",
+    this.sectionTitle = "New albums and singles",
   });
 
   @override
@@ -109,7 +109,7 @@ class _NewAlbumsSectionState extends State<NewAlbumsSection> {
     return Column(
       children: [
         SectionTitle(title: widget.sectionTitle),
-        _albums.isEmpty && !_isFetching
+        _albums.isEmpty && _isFetching
             ? const CircularProgressIndicator() // Show a loading indicator if the initial fetch is ongoing
             : _buildAlbumsListView(),
         // Add a condition to handle the empty state when there are no albums and fetching is done
@@ -186,7 +186,7 @@ class _NewAlbumsSectionState extends State<NewAlbumsSection> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8.0),
               child: Image.network(
                 album.images.first.url,
                 fit: BoxFit.cover,

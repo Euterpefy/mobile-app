@@ -52,6 +52,7 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: customAppBar(context, "Select Seed Genres"),
       body: Stack(
@@ -80,6 +81,14 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
                               selectedColor: yellowSunset,
                               label: Text(genre),
                               selected: _selectedGenres[genre]!,
+                              labelStyle: TextStyle(
+                                color: _selectedGenres[genre]!
+                                    ? Colors.black
+                                    : theme.colorScheme.onBackground,
+                              ),
+                              checkmarkColor: _selectedGenres[genre]!
+                                  ? Colors.black
+                                  : theme.colorScheme.onBackground,
                               onSelected: (bool selected) {
                                 if (selected) {
                                   int selectedCount = _selectedGenres.values
@@ -109,20 +118,24 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
-                  color: Colors.white, // Background color for the button bar
+                  color: theme.colorScheme.primaryContainer,
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: (!widget.advanced)
                         ? [
                             ElevatedButton(
-                              style: elevatedButtonStyle(blue, Colors.white),
+                              style: elevatedButtonStyle(
+                                  theme.colorScheme.primary,
+                                  theme.colorScheme.onPrimary),
                               onPressed: _generateTracks,
                               child: const Text('Generate Tracks'),
                             ),
                             if (getSeedsCount().length < 5)
                               ElevatedButton(
-                                style: outlinedButtonStyle(blue),
+                                style: elevatedButtonStyle(
+                                    theme.colorScheme.secondary,
+                                    theme.colorScheme.onSecondary),
                                 onPressed: _selectArtists,
                                 child: const Text('Select Seed Artists'),
                               ),

@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:euterpefy/models/albums.dart';
@@ -10,10 +12,13 @@ import 'package:euterpefy/models/tracks.dart';
 import 'package:euterpefy/models/tracks_request.dart';
 import 'package:euterpefy/models/user.dart';
 import 'package:euterpefy/services/cache_manager.dart';
+import 'package:euterpefy/utils/services/auth/refresh_token.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 
 class SpotifyService {
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   String accessToken;
   String refreshToken;
   DateTime expirationDate;
@@ -45,15 +50,29 @@ class SpotifyService {
   Future<String> getAccessToken() async {
     // Check if the current token is expired
     if (DateTime.now().isAfter(expirationDate)) {
-      await refreshAccessToken();
+      if (!await refreshServiceAccessToken()) {
+        onAuthFail();
+      }
     }
     return accessToken;
   }
 
-  Future<void> refreshAccessToken() async {
-    // Implement the refresh logic here, similar to the exchangeCodeForToken function
-    // Don't forget to update accessToken, refreshToken, and expirationDate accordingly
-    // Also, securely store the new tokens and expiration date
+  Future<bool> refreshServiceAccessToken() async {
+    final storedRefreshToken = await _storage.read(key: 'refreshToken');
+
+    if (storedRefreshToken == null) {
+      return false;
+    }
+
+    final tokensData = await refreshAccessToken(storedRefreshToken);
+    if (tokensData == null) {
+      return false;
+    }
+    accessToken = tokensData['access_token'];
+    refreshToken = tokensData['refresh_token'];
+    expirationDate =
+        DateTime.now().add(Duration(seconds: tokensData['expires_in'] as int));
+    return true;
   }
 
   Future<void> _checkForAuthFailure(Response response) async {
@@ -65,14 +84,12 @@ class SpotifyService {
   Future<dynamic> _getWithCaching(String url) async {
     // Check cache first
     if (_cacheManager.has(url)) {
-      print("cached");
       return _cacheManager.get(url);
     }
 
     // Check if we need to respect rate limiting
     if (_rateLimitResetTime != null &&
         DateTime.now().isBefore(_rateLimitResetTime!)) {
-      print("rate limited");
       final waitDuration = _rateLimitResetTime!.difference(DateTime.now());
       await Future.delayed(waitDuration);
     }
@@ -82,7 +99,6 @@ class SpotifyService {
       'Content-Type': 'application/json',
     });
 
-    print(response.statusCode);
     // Handle rate limiting
     if (response.statusCode == 429) {
       int waitSeconds = int.parse(response.headers['Retry-After'] ?? '60');
@@ -210,7 +226,7 @@ class SpotifyService {
       'name': name,
       'public': isPublic,
       'collaborative': isCollaborative,
-      'description': description,
+      'description': description ?? 'Playlist created by Euterpefy',
     });
 
     final data = await _postWithHandling(url, body);
@@ -307,15 +323,14 @@ class SpotifyService {
     };
 
     final queryString = Uri(queryParameters: queryParams).query;
+
     String url =
         'https://api.spotify.com/v1/browse/featured-playlists?$queryString';
 
     dynamic data = await _getWithCaching(url);
     if (data == null) return [];
-    final playlistsJson = data['playlists']['items'] as List;
-    return playlistsJson
-        .map((json) => SimplifiedPlaylist.fromJson(json))
-        .toList();
+
+    return SimplifiedPlaylist.fromJsonList(data['playlists']['items']);
   }
 
   Future<Album?> fetchAlbum(String albumId) async {
@@ -434,13 +449,12 @@ class SpotifyService {
 
   Future<List<Track>> generateRecommendations(
       TracksRequest tracksRequest) async {
-    final queryParams = tracksRequest.toJson();
+    final queryParams = tracksRequest.toStringJson();
     queryParams.removeWhere(
         (key, value) => value == null || value.toString() == 'null');
     final queryString = Uri(queryParameters: queryParams).query;
     final url = 'https://api.spotify.com/v1/recommendations?$queryString';
     dynamic data = await _getWithCaching(url);
-
     if (data != null) {
       final List<dynamic> tracksJson = data['tracks'];
       return tracksJson.map((trackJson) => Track.fromJson(trackJson)).toList();
@@ -494,8 +508,9 @@ class SpotifyService {
 
       // Create and add the playlist
       _playlistStreamController.add(EuterpefyPlaylist(
-        name: "This is $genre",
-        description: "A playlist inspired by your interest in $genre.",
+        type: "genre_$genre",
+        description:
+            "A playlist inspired by your interest in $genre (${topArtists.map((e) => e.name).join(', ')}).",
         tracks: playlistTracks,
       ));
 
@@ -513,8 +528,9 @@ class SpotifyService {
         TracksRequest(seedTracks: seedTracks, limit: 50, minPopularity: 40));
 
     return EuterpefyPlaylist(
-      name: "Inspired by Your Top Tracks",
-      description: "A playlist generated from your top tracks.",
+      type: "top_tracks",
+      description:
+          'Because you listen to ${tracks.take(tracks.length - 1).map((e) => e.name).join(', ')}, and ${tracks.last.name}.',
       tracks: recommendations,
     );
   }
@@ -522,14 +538,15 @@ class SpotifyService {
   Future<EuterpefyPlaylist> generatePlaylistFromArtists(
       List<Artist> artists) async {
     // Seed IDs for recommendations
-    final seedArtists = artists.map((track) => track.id).toList();
+    final seedArtists = artists.map((e) => e.id).toList();
     // Generate recommendations
     final recommendations = await generateRecommendations(
         TracksRequest(seedArtists: seedArtists, limit: 50, minPopularity: 40));
 
     return EuterpefyPlaylist(
-      name: "Inspired by Your Top Artists",
-      description: "A playlist generated from your top artists.",
+      type: "top_artists",
+      description:
+          'Because you love ${artists.take(artists.length - 1).map((e) => e.name).join(', ')}, and ${artists.last.name}.',
       tracks: recommendations,
     );
   }

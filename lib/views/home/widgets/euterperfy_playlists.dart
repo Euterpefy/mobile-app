@@ -1,11 +1,16 @@
-import 'dart:async';
+// ignore_for_file: use_build_context_synchronously
 
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:euterpefy/extensions/string.dart';
 import 'package:euterpefy/models/euterpefy_playlist.dart';
 import 'package:euterpefy/utils/providers/app_context.dart';
 import 'package:euterpefy/views/home/widgets/section.dart';
 import 'package:euterpefy/views/playlist/playlist_importing.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EuterpefyPlaylistSection extends StatefulWidget {
   const EuterpefyPlaylistSection({
@@ -18,43 +23,90 @@ class EuterpefyPlaylistSection extends StatefulWidget {
 }
 
 class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
-  final List<EuterpefyPlaylist> _playlists = [];
   StreamSubscription<EuterpefyPlaylist>? _playlistSubscription;
+
+  // a map (key: lists of playlists)
+  final Map<String, List<EuterpefyPlaylist>> _playlistsMap = {};
+  List<String> generatedGenres = [];
+
+  Future<void> loadPlaylists() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // check for generated playlists by genres
+    // "genres" will be a lists of genre(s) generated
+    List<String> genres = prefs.getStringList('generated_genres') ?? [];
+    setState(() {
+      generatedGenres = genres;
+    });
+    // Assuming you have a list of topics
+    List<String> topics = [
+          'top_tracks',
+          'top_artists',
+        ] +
+        genres;
+
+    for (String topic in topics) {
+      String? playlistData = prefs.getString('generated_playlists_$topic');
+      if (playlistData != null) {
+        List<EuterpefyPlaylist> playlists = json
+            .decode(playlistData)
+            .map<EuterpefyPlaylist>((json) => EuterpefyPlaylist.fromJson(json))
+            .toList();
+        setState(() {
+          _playlistsMap[topic] = playlists;
+        });
+      }
+    }
+
+    // Check the time since last update for each topic and decide whether to update
+    checkAndUpdatePlaylistsIfNeeded();
+  }
+
+  Future<void> checkAndUpdatePlaylistsIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastUpdateString = prefs.getString('last_playlist_generated');
+    DateTime lastUpdate = lastUpdateString != null
+        ? DateTime.parse(lastUpdateString)
+        : DateTime.now().subtract(const Duration(days: 1));
+
+    if (DateTime.now().difference(lastUpdate).inMinutes > 10 ||
+        _playlistsMap.isEmpty) {
+      final appContext = Provider.of<AppContext>(context, listen: false);
+      final spotifyService = appContext.spotifyService;
+      if (spotifyService != null) {
+        print("init playlists");
+        initPlaylists();
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    initPlaylists();
-
-    // Listen to changes in AppContext
-    final appContext = Provider.of<AppContext>(context, listen: false);
-    appContext.addListener(initPlaylists);
-  }
-
-  @override
-  void dispose() {
-    // Cancel the stream subscription to prevent memory leaks
-    _playlistSubscription?.cancel();
-    Provider.of<AppContext>(context, listen: false)
-        .removeListener(initPlaylists);
-    super.dispose();
+    loadPlaylists();
   }
 
   void initPlaylists() {
     final spotifyService =
         Provider.of<AppContext>(context, listen: false).spotifyService;
-
-    // Clear existing data and subscription to start fresh
-    setState(() => _playlists.clear());
     _playlistSubscription?.cancel();
 
     if (spotifyService != null) {
       spotifyService.generateAndEmitPlaylists();
       _playlistSubscription = spotifyService.playlistStream.listen(
         (playlist) {
+          String topic = playlist.type;
+
+          if (!_playlistsMap.containsKey(topic)) {
+            setState(() {
+              _playlistsMap[topic] = [];
+            });
+          }
           setState(() {
-            _playlists.add(playlist);
+            _playlistsMap[topic] = [playlist] + (_playlistsMap[topic] ?? []);
           });
+
+          storeUpdatedPlaylists();
         },
         onError: (error) {
           print("Error receiving playlist: $error");
@@ -68,78 +120,101 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
 
   @override
   Widget build(BuildContext context) {
-    final spotifyService =
-        Provider.of<AppContext>(context, listen: false).spotifyService;
-    // If not logged in, show login prompt
-    if (_playlists.isEmpty) {
-      if (spotifyService == null) {
-        return const Center(
-          child: Text('Log in for more features'),
-        );
-      } else {
-        return const Center(
-          child: Text('Generating playlists for you..'),
-        );
-      }
+    final spotifyService = Provider.of<AppContext>(context).spotifyService;
+
+    // Check if the user is logged in by checking if spotifyService is not null
+    if (spotifyService == null) {
+      // User is not logged in, show login prompt
+      return Column(
+        children: [
+          const SectionTitle(title: "For you"),
+          Text(
+            "Log in to browse playlists generated just of you.",
+            style: Theme.of(context).textTheme.labelLarge,
+          )
+        ],
+      );
     }
 
-    // Proceed with building the UI as before
     return Column(
+      children: _playlistsMap.entries
+          .map((entry) => _buildSection(entry.key, entry.value))
+          .toList(),
+    );
+  }
+
+  Widget _buildSection(String title, List<EuterpefyPlaylist> playlists) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionTitle(title: "For You"),
-        Column(
-          children: _playlists
-              .map((playlist) => _buildPlaylistCard(context, playlist))
-              .toList(),
+        SectionTitle(title: topicToSectionTitle(title)),
+        SizedBox(
+          height: 300, // Adjust based on your content
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: playlists.length,
+            itemBuilder: (context, index) {
+              var playlist = playlists[index];
+              return _buildPlaylistCard(playlist, index);
+            },
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildPlaylistCard(BuildContext context, EuterpefyPlaylist playlist) {
+  Widget _buildPlaylistCard(EuterpefyPlaylist playlist, int index) {
     final theme = Theme.of(context);
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PlaylistImportView(
-              title: playlist.name,
-              tracks: playlist.tracks,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PlaylistImportView(
+                title: 'Mix ${index + 1}',
+                tracks: playlist.tracks,
+              ),
             ),
-          ),
-        );
-      },
-      child: Card(
-        elevation: 4.0,
-        color: theme.colorScheme.secondaryContainer,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
+          );
+        },
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 200),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildPlaylistCover(playlist),
               Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  playlist.name,
-                  style: TextStyle(
-                      color: theme.colorScheme.onSecondaryContainer,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500),
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Mix ${index + 1}',
+                      style: theme.textTheme.labelLarge!.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      playlist.tracks
+                          .map((e) => e.artists.map((e) => e.name))
+                          .fold(
+                              [],
+                              (previousValue, element) =>
+                                  previousValue + element.toList())
+                          .toSet()
+                          .take(15)
+                          .join(', '),
+                      style: theme.textTheme.labelMedium!
+                          .copyWith(color: theme.colorScheme.secondary),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
+                    )
+                  ],
                 ),
-              ),
-              if (playlist.description != null)
-                Text(
-                  playlist.description!,
-                  style: theme.textTheme.labelMedium!.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                      fontWeight: FontWeight.w400),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                )
+              )
             ],
           ),
         ),
@@ -184,5 +259,46 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
         ],
       ),
     );
+  }
+
+  // Utility method to convert JSON data to a list of playlists
+  List<EuterpefyPlaylist> convertJsonToPlaylists(String jsonString) {
+    final List<dynamic> jsonList = json.decode(jsonString) as List<dynamic>;
+    return jsonList.map((json) => EuterpefyPlaylist.fromJson(json)).toList();
+  }
+
+  Future<void> storeUpdatedPlaylists() async {
+    final prefs = await SharedPreferences.getInstance();
+    _playlistsMap.forEach((topic, playlists) {
+      prefs.setString('generated_playlists_$topic',
+          jsonEncode(playlists.take(10).map((p) => p.toJson()).toList()));
+
+      if (topic.startsWith("genre_")) {
+        if (!generatedGenres.contains(topic)) {
+          setState(() {
+            generatedGenres = generatedGenres + [topic];
+          });
+          prefs.setStringList("generated_genres", generatedGenres);
+        }
+      }
+    });
+    // Update the last generated timestamp
+    prefs.setString(
+        'last_playlist_generated', DateTime.now().toIso8601String());
+  }
+}
+
+String topicToSectionTitle(String topic) {
+  switch (topic) {
+    case 'top_tracks':
+      return "From your top tracks";
+    case 'top_artists':
+      return "From your top artists";
+
+    default:
+      if (topic.startsWith("genre_")) {
+        return "${topic.split("_")[1].split(" ").map((e) => e.capitalize()).join(" ")} for you";
+      }
+      return "For you";
   }
 }

@@ -1,5 +1,4 @@
 import 'package:euterpefy/views/home/widgets/euterperfy_playlists.dart';
-import 'package:euterpefy/views/home/widgets/section.dart';
 import 'package:flutter/material.dart';
 
 class ExploreTab extends StatefulWidget {
@@ -25,7 +24,7 @@ class _ExploreTabState extends State<ExploreTab>
         padding: EdgeInsets.all(8),
         child: Column(
           children: [
-            Section(child: EuterpefyPlaylistSection()),
+            EuterpefyPlaylistSection(),
             SizedBox(height: 50),
           ],
         ),

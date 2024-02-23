@@ -5,7 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 Future<Map<String, dynamic>?> refreshAccessToken(String refreshToken) async {
-  const storage = FlutterSecureStorage();
   final Uri tokenUri = Uri.parse("https://accounts.spotify.com/api/token");
   final String clientId = dotenv.env['SPOTIFY_CLIENT_ID']!;
 
@@ -20,7 +19,7 @@ Future<Map<String, dynamic>?> refreshAccessToken(String refreshToken) async {
       'client_id': clientId,
     },
   );
-
+  const storage = FlutterSecureStorage();
   if (response.statusCode == 200) {
     final body = json.decode(response.body);
     final newAccessToken = body['access_token'];
@@ -40,7 +39,9 @@ Future<Map<String, dynamic>?> refreshAccessToken(String refreshToken) async {
       'expirationDate': expirationDate.toIso8601String(),
     };
   } else {
-    // Handle error or token refresh failure
+    await storage.delete(key: 'accessToken');
+    await storage.delete(key: 'refreshToken');
+    await storage.delete(key: 'expirationDate');
     return null;
   }
 }

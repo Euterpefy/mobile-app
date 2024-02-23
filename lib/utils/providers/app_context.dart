@@ -4,39 +4,28 @@ import 'package:flutter/material.dart';
 
 class AppContext extends ChangeNotifier {
   User? _user;
-  String? _token;
   SpotifyService? _spotifyService;
 
   User? get user => _user;
-  String? get token => _token;
   SpotifyService? get spotifyService => _spotifyService;
 
-  AppContext() {
-    _updateSpotifyService();
-  }
+  AppContext();
 
-  void _updateSpotifyService() {
-    if (_token != null) {
-      _spotifyService = SpotifyService(
-        accessToken: _token!,
-        onAuthFail: onAuthenticationFailure, // Pass the method as a callback
-      );
-    } else {
-      _spotifyService = null;
-    }
-  }
-
-  void login(User user, String token) {
+  void login(User user, String accessToken, String refreshToken,
+      DateTime expirationDate) {
     _user = user;
-    _token = token;
-    _updateSpotifyService();
+    _spotifyService = SpotifyService(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      expirationDate: expirationDate,
+      onAuthFail: onAuthenticationFailure,
+    );
     notifyListeners();
   }
 
   void logout() {
     _user = null;
-    _token = null;
-    _updateSpotifyService();
+    _spotifyService = null;
     notifyListeners();
   }
 
@@ -45,16 +34,9 @@ class AppContext extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setToken(String? token) {
-    _token = token;
-    _updateSpotifyService();
-    notifyListeners();
-  }
-
   void onAuthenticationFailure() {
-    _token = null;
     _user = null;
-    _updateSpotifyService();
+    _spotifyService = null;
     notifyListeners();
   }
 }

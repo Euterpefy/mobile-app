@@ -100,7 +100,7 @@ class ApiService {
       return tracks;
     } else {
       throw Exception(
-          'Failed to load seed tracks. Status: ${response.statusCode}');
+          'Failed to load seed tracks. Status: ${response.statusCode}. Error: ${response.body}');
     }
   }
 }

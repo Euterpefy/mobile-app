@@ -2,6 +2,7 @@ import 'package:euterpefy/models/artists.dart';
 import 'package:euterpefy/models/tracks_request.dart';
 import 'package:euterpefy/services/api_service.dart';
 import 'package:euterpefy/utils/color.dart';
+import 'package:euterpefy/utils/styles/buttons.dart';
 import 'package:euterpefy/views/tracks_generating/recommendations.dart';
 import 'package:euterpefy/widgets/custom_appbar.dart';
 import 'package:flutter/material.dart';
@@ -69,6 +70,9 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    List<Widget> actionButtons = _buildActionButtons(theme);
+
     return Scaffold(
       appBar: customAppBar(context, "Select Seed Artists"),
       body: Stack(children: [
@@ -95,6 +99,11 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
                       .map((artist) => ChoiceChip(
                             showCheckmark: false,
                             selectedColor: yellowSunset,
+                            labelStyle: TextStyle(
+                              color: (_selectedArtists[artist.id] ?? false)
+                                  ? Colors.black
+                                  : theme.colorScheme.onBackground,
+                            ),
                             label: Text(artist.name),
                             selected: _selectedArtists[artist.id] ?? false,
                             onSelected: (bool selected) {
@@ -124,58 +133,19 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
             ],
           ),
         ),
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: Container(
-              color: Colors.white, // Background color for the button bar
+        if (_isAnyArtistSelected)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              color: theme.colorScheme.primaryContainer,
               padding: const EdgeInsets.all(8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: (_isAnyArtistSelected && !widget.advanced
-                    ? [
-                        ElevatedButton(
-                          onPressed: _generateRecommendations,
-                          child: const Text('Generate Tracks'),
-                        ),
-                        if (getSelectedSeedsCount() < 5)
-                          ElevatedButton(
-                            onPressed: _generateRecommendations,
-                            child: const Text('Select Seed Tracks'),
-                          ),
-                      ]
-                    : _isAnyArtistSelected && widget.advanced
-                        ? [
-                            ElevatedButton.icon(
-                              onPressed: _nextAdvanced,
-                              label: const Text('Next'),
-                              icon: const Icon(Icons.navigate_next),
-                            )
-                          ]
-                        : []),
-              )),
-        ),
+                children: actionButtons,
+              ),
+            ),
+          ),
       ]),
-      floatingActionButton: Container(
-        margin: const EdgeInsets.only(bottom: 50),
-        // Add 80 pixels bottom margin
-        child: FloatingActionButton(
-          onPressed: _cooldownActive
-              ? () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Loading new artists on cooldown...'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
-              : () async {
-                  setState(() => _cooldownActive = true);
-                  await _fetchRecommendArtists();
-                },
-          tooltip: 'Load new artists',
-          child: const Icon(Icons.refresh),
-        ),
-      ),
     );
   }
 
@@ -219,5 +189,61 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
 
     // Pop the screen and pass back the selected genres
     Navigator.pop(context, selectedArtist);
+  }
+
+  List<Widget> _buildActionButtons(ThemeData theme) {
+    if (widget.advanced) {
+      return [
+        ElevatedButton.icon(
+          onPressed: _nextAdvanced,
+          label: const Text('Next'),
+          icon: const Icon(Icons.navigate_next),
+          style: elevatedButtonStyle(
+              theme.colorScheme.primary, theme.colorScheme.onPrimary),
+        ),
+      ];
+    } else {
+      List<Widget> buttons = [
+        ElevatedButton(
+          onPressed: _generateRecommendations,
+          style: elevatedButtonStyle(
+              theme.colorScheme.primary, theme.colorScheme.onPrimary),
+          child: const Text('Generate Tracks'),
+        ),
+      ];
+
+      if (getSelectedSeedsCount() < 5) {
+        buttons.add(
+          ElevatedButton(
+            onPressed: () {
+              // Your logic for selecting seed tracks
+            },
+            style: elevatedButtonStyle(
+                theme.colorScheme.secondary, theme.colorScheme.onSecondary),
+            child: const Text('Select Seed Tracks'),
+          ),
+        );
+      }
+
+      return buttons;
+    }
+  }
+
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
+      onPressed:
+          _cooldownActive ? _showCooldownSnackbar : _fetchRecommendArtists,
+      tooltip: 'Load new artists',
+      child: const Icon(Icons.refresh),
+    );
+  }
+
+  void _showCooldownSnackbar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Loading new artists on cooldown...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 }

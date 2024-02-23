@@ -111,7 +111,7 @@ class _FeaturedPlaylistsSectionState extends State<FeaturedPlaylistsSection> {
       children: [
         SectionTitle(title: widget.sectionTitle),
         _playlists.isEmpty && !_isFetching
-            ? const CircularProgressIndicator() // Show a loading indicator if the initial fetch is ongoing
+            ? const Center(child: CircularProgressIndicator())
             : _buildPlaylistsListView(),
         // Add a condition to handle the empty state when there are no playlists and fetching is done
         if (_playlists.isEmpty && !_isFetching && !_hasMore)
@@ -185,7 +185,7 @@ class _FeaturedPlaylistsSectionState extends State<FeaturedPlaylistsSection> {
         child: Column(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(0),
+              borderRadius: BorderRadius.circular(8.0),
               child: Image.network(
                 playlist.images.first.url,
                 fit: BoxFit.cover,

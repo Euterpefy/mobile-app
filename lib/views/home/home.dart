@@ -29,6 +29,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
@@ -63,9 +64,11 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       bottomNavigationBar: Container(
+        padding: EdgeInsets.only(bottom: bottomPadding),
         color: theme.colorScheme.primaryContainer,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          padding:
+              EdgeInsets.fromLTRB(15, 10, 15, (bottomPadding == 0) ? 10 : 0),
           child: GNav(
             backgroundColor: theme.colorScheme.primaryContainer,
             padding: const EdgeInsets.all(8.0),
