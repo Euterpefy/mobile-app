@@ -80,10 +80,4 @@ system. Follow these steps:
 - [Spotify API Documentation](https://developer.spotify.com/documentation/web-api/): Learn more
   about the Spotify Web API and how to integrate it into your projects.
 
-## Contributing
-
-Euterpefy is an open-source project, and contributions are welcome. If you're interested in
-improving the app or the `rustyspoty` crate, please feel free to submit pull requests or create
-issues for bugs, feature requests, or suggestions.
-
 Thank you for exploring Euterpefy. Let the music inspire you!
