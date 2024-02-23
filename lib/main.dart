@@ -3,6 +3,7 @@ import 'package:euterpefy/utils/services/auth/refresh_token.dart';
 import 'package:euterpefy/views/home/home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -22,27 +23,29 @@ class MyApp extends StatelessWidget {
   final String? refreshToken;
   const MyApp({super.key, this.refreshToken});
 
-  ThemeData _lightTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color.fromARGB(255, 211, 226, 255),
-      ),
-    );
-  }
-
-  ThemeData _darkTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xff293241),
-        brightness: Brightness.dark,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    ThemeData lightTheme() {
+      return ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color.fromARGB(255, 211, 226, 255),
+          ),
+          textTheme: GoogleFonts.ubuntuTextTheme(textTheme));
+    }
+
+    ThemeData darkTheme() {
+      return ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xff293241),
+            brightness: Brightness.dark,
+          ),
+          textTheme: GoogleFonts.ubuntuTextTheme(textTheme));
+    }
+
     return ChangeNotifierProvider(
       create: (context) {
         final appContext = AppContext();
@@ -53,8 +56,8 @@ class MyApp extends StatelessWidget {
       },
       child: MaterialApp(
         title: 'Euterpefy',
-        theme: _lightTheme(), // Use the light theme
-        darkTheme: _darkTheme(), // Use the dark theme
+        theme: lightTheme(), // Use the light theme
+        darkTheme: darkTheme(), // Use the dark theme
         themeMode: ThemeMode.system, // Use system theme mode
         home: const HomePage(title: 'Music Recommender'),
       ),
