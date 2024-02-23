@@ -39,8 +39,17 @@ class SlidableTrackItem extends StatelessWidget {
         leading: track.album.images.isNotEmpty
             ? Image.network(track.album.images.first.url)
             : const Icon(Icons.music_note),
-        title: Text(track.name),
-        subtitle: Text(track.artists.map((a) => a.name).join(', ')),
+        title: Text(
+          track.name,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+        ),
+        subtitle: Text(
+          track.artists.map((a) => a.name).join(', '),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
         trailing: IconButton(
           icon: Icon(isCurrentTrackPlaying ? Icons.pause : Icons.play_arrow),
           onPressed: onTrackPressed,
