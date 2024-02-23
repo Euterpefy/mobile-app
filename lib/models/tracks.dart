@@ -9,7 +9,6 @@ class Track {
   final int durationMs;
   final String? previewUrl; // nullable
   final ExternalUrls externalUrls;
-  // final List<SpotifyImage> images;
 
   Track({
     required this.id,
@@ -19,7 +18,6 @@ class Track {
     required this.durationMs,
     this.previewUrl,
     required this.externalUrls,
-    // required this.images
   });
 
   factory Track.fromJson(Map<String, dynamic> json) {
@@ -32,8 +30,6 @@ class Track {
       durationMs: json['duration_ms'],
       previewUrl: json['preview_url'],
       externalUrls: ExternalUrls.fromJson(json['external_urls']),
-      // images: List<SpotifyImage>.from(
-      //     json['images'].map((x) => SpotifyImage.fromJson(x)))
     );
   }
 
@@ -44,10 +40,8 @@ class Track {
       'artists': List<dynamic>.from(artists.map((x) => x.toJson())),
       'album': album.toJson(),
       'duration_ms': durationMs,
-      'preview_url':
-          previewUrl, // No change needed here, as null is a valid value
+      'preview_url': previewUrl,
       'external_urls': externalUrls.toJson(),
-      // 'images': List<dynamic>.from(images.map((x) => x.toJson())),
     };
   }
 }
@@ -108,10 +102,8 @@ class SimplifiedTrack {
       'name': name,
       'artists': List<dynamic>.from(artists.map((x) => x.toJson())),
       'duration_ms': durationMs,
-      'preview_url':
-          previewUrl, // No change needed here, as null is a valid value
+      'preview_url': previewUrl,
       'external_urls': externalUrls.toJson(),
-      // 'images': List<dynamic>.from(images.map((x) => x.toJson())),
     };
   }
 }

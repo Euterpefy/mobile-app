@@ -106,8 +106,10 @@ class SimplifiedAlbum {
       name: json['name'],
       releaseDate: json['release_date'],
       releaseDatePrecision: json['release_date_precision'],
-      artists: List<TrackArtist>.from(
-          json['artists'].map((x) => TrackArtist.fromJson(x))),
+      artists: json['artists'] == null
+          ? []
+          : List<TrackArtist>.from(
+              json['artists'].map((x) => TrackArtist.fromJson(x))),
     );
   }
 

@@ -204,4 +204,8 @@ class SimplifiedPlaylist {
       uri: json['uri'],
     );
   }
+
+  static List<SimplifiedPlaylist> fromJsonList(List<dynamic> jsonList) {
+    return jsonList.map((json) => SimplifiedPlaylist.fromJson(json)).toList();
+  }
 }
