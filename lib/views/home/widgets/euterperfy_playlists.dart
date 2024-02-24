@@ -30,11 +30,13 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
   List<String> generatedGenres = [];
 
   Future<void> loadPlaylists() async {
+    final appContext = Provider.of<AppContext>(context, listen: false);
     final prefs = await SharedPreferences.getInstance();
 
     // check for generated playlists by genres
     // "genres" will be a lists of genre(s) generated
-    List<String> genres = prefs.getStringList('generated_genres') ?? [];
+    List<String> genres =
+        prefs.getStringList('${appContext.user!.id}/generated_genres') ?? [];
     setState(() {
       generatedGenres = genres;
     });
@@ -46,7 +48,8 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
         genres;
 
     for (String topic in topics) {
-      String? playlistData = prefs.getString('generated_playlists_$topic');
+      String? playlistData =
+          prefs.getString('${appContext.user!.id}/generated_playlists_$topic');
       if (playlistData != null) {
         List<EuterpefyPlaylist> playlists = json
             .decode(playlistData)
@@ -63,8 +66,10 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
   }
 
   Future<void> checkAndUpdatePlaylistsIfNeeded() async {
+    final appContext = Provider.of<AppContext>(context, listen: false);
     final prefs = await SharedPreferences.getInstance();
-    final lastUpdateString = prefs.getString('last_playlist_generated');
+    final lastUpdateString =
+        prefs.getString('${appContext.user!.id}/last_playlist_generated');
     DateTime lastUpdate = lastUpdateString != null
         ? DateTime.parse(lastUpdateString)
         : DateTime.now().subtract(const Duration(days: 1));
@@ -74,7 +79,6 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
       final appContext = Provider.of<AppContext>(context, listen: false);
       final spotifyService = appContext.spotifyService;
       if (spotifyService != null) {
-        print("init playlists");
         initPlaylists();
       }
     }
@@ -269,9 +273,10 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
   }
 
   Future<void> storeUpdatedPlaylists() async {
+    final appContext = Provider.of<AppContext>(context, listen: false);
     final prefs = await SharedPreferences.getInstance();
     _playlistsMap.forEach((topic, playlists) {
-      prefs.setString('generated_playlists_$topic',
+      prefs.setString('${appContext.user!.id}/generated_playlists_$topic',
           jsonEncode(playlists.take(10).map((p) => p.toJson()).toList()));
 
       if (topic.startsWith("genre_")) {
@@ -279,13 +284,14 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
           setState(() {
             generatedGenres = generatedGenres + [topic];
           });
-          prefs.setStringList("generated_genres", generatedGenres);
+          prefs.setStringList(
+              "${appContext.user!.id}/generated_genres", generatedGenres);
         }
       }
     });
     // Update the last generated timestamp
-    prefs.setString(
-        'last_playlist_generated', DateTime.now().toIso8601String());
+    prefs.setString('${appContext.user!.id}/last_playlist_generated',
+        DateTime.now().toIso8601String());
   }
 }
 
