@@ -258,7 +258,7 @@ class SpotifyService {
     }
   }
 
-  Stream<SimplifiedPlaylist> getAllUserPlaylists(String userId) async* {
+  Stream<SimplifiedPlaylist> fetchAllUserPlaylists(String userId) async* {
     int offset = 0;
     bool morePages = true;
 
@@ -572,8 +572,6 @@ class SpotifyService {
       // Create and add the playlist
       _playlistStreamController.add(EuterpefyPlaylist(
         type: "genre_$genre",
-        description:
-            "A playlist inspired by your interest in $genre (${topArtists.map((e) => e.name).join(', ')}).",
         tracks: playlistTracks,
       ));
 
@@ -592,8 +590,6 @@ class SpotifyService {
 
     return EuterpefyPlaylist(
       type: "top_tracks",
-      description:
-          'Because you listen to ${tracks.take(tracks.length - 1).map((e) => e.name).join(', ')}, and ${tracks.last.name}.',
       tracks: recommendations,
     );
   }
@@ -608,8 +604,6 @@ class SpotifyService {
 
     return EuterpefyPlaylist(
       type: "top_artists",
-      description:
-          'Because you love ${artists.take(artists.length - 1).map((e) => e.name).join(', ')}, and ${artists.last.name}.',
       tracks: recommendations,
     );
   }
