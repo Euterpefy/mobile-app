@@ -10,8 +10,8 @@ class SpotifyImage {
   factory SpotifyImage.fromJson(Map<String, dynamic> json) {
     return SpotifyImage(
       url: json['url'],
-      height: json['height'],
-      width: json['width'],
+      height: (json['height'] as num?)?.toInt(), // Safely cast to int
+      width: (json['width'] as num?)?.toInt(), // Safely cast to int
     );
   }
 
@@ -69,9 +69,7 @@ class Followers {
   Followers({required this.total});
 
   factory Followers.fromJson(Map<String, dynamic> json) {
-    return Followers(
-      total: json['total'],
-    );
+    return Followers(total: (json['total'] as num?)!.toInt());
   }
 
   Map<String, dynamic> toJson() {

@@ -5,7 +5,7 @@ class Artist {
   final String name;
   final List<SpotifyImage> images;
   final String spotifyUrl;
-  final int followers;
+  final Followers followers;
   final List<String> genres;
   final int popularity;
 
@@ -25,9 +25,9 @@ class Artist {
       images: List<SpotifyImage>.from(
           json['images'].map((x) => SpotifyImage.fromJson(x))),
       spotifyUrl: json['external_urls']['spotify'],
-      followers: json['followers']['total'],
+      followers: Followers.fromJson(json['followers']),
       genres: List<String>.from(json['genres']),
-      popularity: json['popularity'],
+      popularity: (json['popularity'] as num).toInt(),
     );
   }
 
