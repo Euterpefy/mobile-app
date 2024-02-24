@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:euterpefy/extensions/string.dart';
 import 'package:euterpefy/models/albums.dart';
 import 'package:euterpefy/models/tracks.dart';
+import 'package:euterpefy/widgets/spotify_logo.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class AlbumView extends StatefulWidget {
@@ -73,9 +76,17 @@ class _AlbumViewState extends State<AlbumView> {
           backgroundColor:
               Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
           foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-          title: Text(
-            widget.album.name,
-            style: const TextStyle(fontWeight: FontWeight.w700),
+          title: Row(
+            children: [
+              Text(
+                widget.album.name,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(
+                width: 8,
+              ),
+              const SpotifyLogo()
+            ],
           )),
       body: SingleChildScrollView(
         child: Column(
@@ -167,7 +178,15 @@ class SimplifiedTrackTile extends StatelessWidget {
             .copyWith(color: theme.colorScheme.secondary),
       ),
       trailing: IconButton(
-        icon: Icon(isCurrentTrackPlaying ? Icons.pause : Icons.play_arrow),
+        icon: Icon(isCurrentTrackPlaying
+            ? (Platform.isIOS ? CupertinoIcons.pause_fill : Icons.pause)
+            : (Platform.isIOS
+                ? (track.previewUrl == null
+                    ? CupertinoIcons.play
+                    : CupertinoIcons.play_fill)
+                : track.previewUrl == null
+                    ? Icons.play_arrow_outlined
+                    : Icons.play_arrow)),
         onPressed: onTrackPressed,
         color: track.previewUrl == null ? Colors.grey : null,
       ),
