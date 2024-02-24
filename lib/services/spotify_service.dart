@@ -222,7 +222,7 @@ class SpotifyService {
     return User.fromJson(data);
   }
 
-  Future<PagedResponse<SimplifiedPlaylist>?> getUserPlaylists(String userId,
+  Future<PagedResponse<SimplifiedPlaylist>?> fetchUserPlaylists(String userId,
       {int limit = 20, int offset = 0}) async {
     final url = '$baseUrl/users/$userId/playlists?limit=$limit&offset=$offset';
 
@@ -240,7 +240,7 @@ class SpotifyService {
     }
   }
 
-  Future<PagedResponse<SimplifiedPlaylist>?> getCurrentUserPlaylists(
+  Future<PagedResponse<SimplifiedPlaylist>?> fetchCurrentUserPlaylists(
       {int limit = 50, int offset = 0}) async {
     final url = '$baseUrl/me/playlists?limit=$limit&offset=$offset';
 
@@ -264,7 +264,7 @@ class SpotifyService {
 
     while (morePages) {
       // Fetch the paged response for user playlists.
-      final pagedResponse = await getUserPlaylists(userId, offset: offset);
+      final pagedResponse = await fetchUserPlaylists(userId, offset: offset);
 
       if (pagedResponse != null && pagedResponse.items.isNotEmpty) {
         // Yield each playlist in the current page.

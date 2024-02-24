@@ -177,7 +177,7 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
         return ImportAskDialog(
           onImportToExisting: () async {
             // Fetch playlists
-            final playlists = await spotifyService.getCurrentUserPlaylists();
+            final playlists = await spotifyService.fetchCurrentUserPlaylists();
             if (playlists == null || playlists.items.isEmpty) {
               // Handle case where no playlists are returned or an error occurs
               ScaffoldMessenger.of(context).showSnackBar(
