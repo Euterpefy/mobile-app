@@ -1,11 +1,12 @@
 import 'package:euterpefy/models/tracks_request.dart';
-import 'package:euterpefy/services/api_service.dart';
 import 'package:euterpefy/utils/color.dart';
+import 'package:euterpefy/utils/providers/app_context.dart';
 import 'package:euterpefy/utils/styles/buttons.dart';
 import 'package:euterpefy/views/tracks_generating/artist_selection.dart';
 import 'package:euterpefy/views/tracks_generating/recommendations.dart';
 import 'package:euterpefy/widgets/custom_appbar.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class GenreSelectionScreen extends StatefulWidget {
   final int limit;
@@ -23,7 +24,6 @@ class GenreSelectionScreen extends StatefulWidget {
 }
 
 class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
-  final ApiService _apiService = ApiService();
   List<String> _genres = [];
   final Map<String, bool> _selectedGenres = {};
 
@@ -34,7 +34,9 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
   }
 
   void _fetchGenres() async {
-    List<String> genres = await _apiService.fetchGenres();
+    final spotifyService =
+        Provider.of<AppContext>(context, listen: false).spotifyService;
+    List<String> genres = await spotifyService!.fetchSeedGenres() ?? [];
     setState(() {
       _genres = genres;
       for (var genre in genres) {
@@ -53,6 +55,8 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    var bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       appBar: customAppBar(context, "Select Seed Genres"),
       body: Stack(
@@ -71,42 +75,45 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
                     ),
                   ),
                 ),
-                Center(
-                  child: Wrap(
-                    spacing: 8.0,
-                    runSpacing: 4.0,
-                    alignment: WrapAlignment.center,
-                    children: _genres
-                        .map((genre) => ChoiceChip(
-                              selectedColor: yellowSunset,
-                              label: Text(genre),
-                              selected: _selectedGenres[genre]!,
-                              labelStyle: TextStyle(
-                                color: _selectedGenres[genre]!
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Center(
+                    child: Wrap(
+                      spacing: 8.0,
+                      runSpacing: 4.0,
+                      alignment: WrapAlignment.center,
+                      children: _genres
+                          .map((genre) => ChoiceChip(
+                                selectedColor: yellowSunset,
+                                label: Text(genre),
+                                selected: _selectedGenres[genre]!,
+                                labelStyle: TextStyle(
+                                  color: _selectedGenres[genre]!
+                                      ? Colors.black
+                                      : theme.colorScheme.onBackground,
+                                ),
+                                checkmarkColor: _selectedGenres[genre]!
                                     ? Colors.black
                                     : theme.colorScheme.onBackground,
-                              ),
-                              checkmarkColor: _selectedGenres[genre]!
-                                  ? Colors.black
-                                  : theme.colorScheme.onBackground,
-                              onSelected: (bool selected) {
-                                if (selected) {
-                                  int selectedCount = _selectedGenres.values
-                                      .where((b) => b)
-                                      .length;
-                                  if (selectedCount < widget.limit) {
+                                onSelected: (bool selected) {
+                                  if (selected) {
+                                    int selectedCount = _selectedGenres.values
+                                        .where((b) => b)
+                                        .length;
+                                    if (selectedCount < widget.limit) {
+                                      setState(() {
+                                        _selectedGenres[genre] = selected;
+                                      });
+                                    }
+                                  } else {
                                     setState(() {
                                       _selectedGenres[genre] = selected;
                                     });
                                   }
-                                } else {
-                                  setState(() {
-                                    _selectedGenres[genre] = selected;
-                                  });
-                                }
-                              },
-                            ))
-                        .toList(),
+                                },
+                              ))
+                          .toList(),
+                    ),
                   ),
                 ),
                 if (_isAnyGenreSelected) const SizedBox(height: 80),
@@ -119,7 +126,8 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
               alignment: Alignment.bottomCenter,
               child: Container(
                   color: theme.colorScheme.primaryContainer,
-                  padding: const EdgeInsets.all(8.0),
+                  padding: EdgeInsets.fromLTRB(
+                      8, 8, 8, bottomPadding == 0 ? 8 : bottomPadding),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: (!widget.advanced)
@@ -142,6 +150,9 @@ class _GenreSelectionScreenState extends State<GenreSelectionScreen> {
                           ]
                         : [
                             ElevatedButton.icon(
+                              style: elevatedButtonStyle(
+                                  theme.colorScheme.primary,
+                                  theme.colorScheme.onPrimary),
                               onPressed: _nextAdvanced,
                               label: const Text('Next'),
                               icon: const Icon(Icons.navigate_next),

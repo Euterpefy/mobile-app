@@ -1,8 +1,9 @@
 import 'package:euterpefy/models/tracks.dart';
 import 'package:euterpefy/models/tracks_request.dart';
-import 'package:euterpefy/services/api_service.dart';
+import 'package:euterpefy/utils/providers/app_context.dart';
 import 'package:euterpefy/views/playlist/playlist_importing.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class RecommendationsScreen extends StatefulWidget {
   final TracksRequest tracksRequest;
@@ -17,8 +18,6 @@ class RecommendationsScreen extends StatefulWidget {
 }
 
 class _RecommendationsScreenState extends State<RecommendationsScreen> {
-  final ApiService _apiService = ApiService();
-
   List<Track> _recommendations = [];
   bool _isLoading = true;
 
@@ -29,16 +28,26 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   }
 
   void _fetchRecommendations() async {
-    List<Track> recommendations = await _apiService.fetchRecommendedTracks(
-        tracksRequest: widget.tracksRequest);
+    final spotifyService =
+        Provider.of<AppContext>(context, listen: false).spotifyService;
+    if (spotifyService == null) {
+      return;
+    }
+    List<Track> tracks =
+        await spotifyService.generateRecommendations(widget.tracksRequest);
     setState(() {
-      _recommendations = recommendations;
+      _recommendations = tracks;
       _isLoading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final spotifyService =
+        Provider.of<AppContext>(context, listen: false).spotifyService;
+    if (spotifyService == null) {
+      return const Center(child: Text("You need to log in again."));
+    }
     return _isLoading
         ? const Center(
             child: CircularProgressIndicator(),

@@ -1,11 +1,12 @@
 import 'package:euterpefy/models/artists.dart';
 import 'package:euterpefy/models/tracks_request.dart';
-import 'package:euterpefy/services/api_service.dart';
 import 'package:euterpefy/utils/color.dart';
+import 'package:euterpefy/utils/providers/app_context.dart';
 import 'package:euterpefy/utils/styles/buttons.dart';
 import 'package:euterpefy/views/tracks_generating/recommendations.dart';
 import 'package:euterpefy/widgets/custom_appbar.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class ArtistSelectionScreen extends StatefulWidget {
   final List<String> selectedGenres;
@@ -25,8 +26,6 @@ class ArtistSelectionScreen extends StatefulWidget {
 }
 
 class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
-  final ApiService _apiService = ApiService();
-
   List<Artist> _artists = [];
   final Map<String, bool> _selectedArtists = {};
   DateTime _lastFetchTime = DateTime.now().subtract(const Duration(minutes: 1));
@@ -50,10 +49,14 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
   }
 
   Future<void> _fetchRecommendArtists({bool merge = true}) async {
+    final spotifyService =
+        Provider.of<AppContext>(context, listen: false).spotifyService;
+
     DateTime now = DateTime.now();
     if (now.difference(_lastFetchTime).inSeconds >= 60 || !merge) {
-      List<Artist> newArtists = await _apiService.fetchSeedArtists(
-          selectedGenres: widget.selectedGenres);
+      List<Artist> newArtists = await spotifyService!
+              .fetchSeedArtists(seedGenres: widget.selectedGenres) ??
+          [];
       setState(() {
         if (merge) {
           // Merge new artists with existing ones, avoiding duplicates
@@ -72,7 +75,7 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     List<Widget> actionButtons = _buildActionButtons(theme);
-
+    var bottomPadding = MediaQuery.of(context).padding.bottom;
     return Scaffold(
       appBar: customAppBar(context, "Select Seed Artists"),
       body: Stack(children: [
@@ -138,7 +141,8 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
             alignment: Alignment.bottomCenter,
             child: Container(
               color: theme.colorScheme.primaryContainer,
-              padding: const EdgeInsets.all(8.0),
+              padding: EdgeInsets.fromLTRB(
+                  8, 8, 8, bottomPadding == 0 ? 8 : bottomPadding),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: actionButtons,
