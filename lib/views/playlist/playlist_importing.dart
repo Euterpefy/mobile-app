@@ -1,10 +1,16 @@
+// ignore_for_file: use_build_context_synchronously
+
+import 'dart:io';
+
 import 'package:euterpefy/models/playlists.dart';
 import 'package:euterpefy/models/tracks.dart';
+import 'package:euterpefy/services/spotify_service.dart';
 import 'package:euterpefy/utils/providers/app_context.dart';
-import 'package:euterpefy/widgets/custom_appbar.dart';
-import 'package:euterpefy/widgets/playlist_imports/import_ask_dialog.dart';
-import 'package:euterpefy/widgets/playlist_imports/import_playlist_dialog.dart';
-import 'package:euterpefy/widgets/playlist_imports/track_item.dart';
+import 'package:euterpefy/views/playlist/playlist_imports/import_ask_dialog.dart';
+import 'package:euterpefy/views/playlist/playlist_imports/import_playlist_dialog.dart';
+import 'package:euterpefy/views/playlist/playlist_imports/track_item.dart';
+import 'package:euterpefy/widgets/spotify_logo.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
@@ -31,7 +37,9 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
   @override
   void initState() {
     super.initState();
-    _tracks = List.from(widget.tracks);
+    setState(() {
+      _tracks = List.from(widget.tracks);
+    });
   }
 
   @override
@@ -48,6 +56,8 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
       } else {
         _playPreview(track.id, track.previewUrl);
       }
+    } else {
+      _showSnackBar('Preview is not available for this track.');
     }
   }
 
@@ -79,31 +89,72 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
+      duration: const Duration(seconds: 1),
     ));
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: customAppBar(context, widget.title),
-      body: ListView.builder(
-        itemCount: _tracks.length,
-        itemBuilder: (context, index) {
-          var track = _tracks[index];
-          bool isCurrentTrackPlaying = _playingTrackId == track.id;
-          return SlidableTrackItem(
-            track: track,
-            index: index,
-            isCurrentTrackPlaying: isCurrentTrackPlaying,
-            onTrackPressed: () => _onTrackButtonPressed(track),
-            onRemovePressed: () => _removeTrack(track, index),
-          );
-        },
+      appBar: AppBar(
+        backgroundColor: theme.colorScheme.primaryContainer,
+        foregroundColor: theme.colorScheme.onPrimaryContainer,
+        title: Column(
+          children: [
+            Text(
+              widget.title,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            Text(
+              '${_tracks.length} Tracks',
+              style: theme.textTheme.titleSmall!
+                  .copyWith(fontWeight: FontWeight.w500),
+            )
+          ],
+        ),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: const Text('Slide Track to the left to remove',
+                textAlign: TextAlign.center),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.only(bottom: 100),
+              itemCount: _tracks.length,
+              itemBuilder: (context, index) {
+                var track = _tracks[index];
+                bool isCurrentTrackPlaying = _playingTrackId == track.id;
+                return SlidableTrackItem(
+                  track: track,
+                  index: index,
+                  isCurrentTrackPlaying: isCurrentTrackPlaying,
+                  onTrackPressed: () => _onTrackButtonPressed(track),
+                  onRemovePressed: () => _removeTrack(track, index),
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _importPlaylist(),
-        label: const Text('Import to Spotify'),
-        icon: const Icon(Icons.playlist_add),
+        label: const Row(
+          children: [
+            Text('Import to Spotify'),
+            SizedBox(
+              width: 8,
+            ),
+            SpotifyLogo()
+          ],
+        ),
+        icon: Icon(Platform.isIOS
+            ? CupertinoIcons.music_albums_fill
+            : Icons.playlist_add),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
@@ -122,10 +173,72 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
     // This could include showing dialogs for creating a new playlist or selecting an existing one.
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext importContext) {
         return ImportAskDialog(
-          onImportToExisting: () {
-            // Implement the logic to display a list of existing playlists
+          onImportToExisting: () async {
+            // Fetch playlists
+            final playlists = await spotifyService.getCurrentUserPlaylists();
+            if (playlists == null || playlists.items.isEmpty) {
+              // Handle case where no playlists are returned or an error occurs
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content:
+                        Text('No playlists found. Please try again later.')),
+              );
+              return;
+            }
+
+            // Existing logic to create a new playlist
+            showDialog(
+              context: context,
+              builder: (BuildContext dialogContext) {
+                return AlertDialog(
+                  title: const Text(
+                    'Select a Playlist',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  content: SizedBox(
+                    width: double.maxFinite,
+                    child: ListView.builder(
+                      itemCount: playlists.items.length,
+                      itemBuilder: (BuildContext itemBuildContext, int index) {
+                        final coverImages = playlists.items[index].images;
+                        return ListTile(
+                          leading: coverImages.isNotEmpty
+                              ? Image.network(coverImages.first.url)
+                              : const SizedBox(
+                                  width: 55,
+                                  child: SpotifyLogo(),
+                                ),
+                          title: Text(
+                            playlists.items[index].name,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          subtitle: Text(
+                              '${playlists.items[index].tracks.total} tracks'),
+                          onTap: () {
+                            // Import tracks into the selected playlist
+                            _importTracksToPlaylist(spotifyService,
+                                playlists.items[index].id, _tracks);
+                            Navigator.of(dialogContext)
+                                .pop(); // Close the dialog
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () =>
+                          Navigator.of(dialogContext).pop(), // Close the dialog
+                      child: const Text('Cancel'),
+                    ),
+                  ],
+                );
+              },
+            );
           },
           onCreateNew: () {
             // Existing logic to create a new playlist
@@ -177,6 +290,25 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
       _showSnackBar("Playlist imported successfully.");
     } else {
       _showSnackBar("Failed to add tracks to playlist.");
+    }
+  }
+
+  Future<void> _importTracksToPlaylist(SpotifyService spotifyService,
+      String playlistId, List<Track> tracks) async {
+    // Assuming you have a method to add tracks to a playlist
+    final success = await spotifyService.addTracksToPlaylist(
+        playlistId, tracks.map((track) => track.id).toList());
+
+    if (success) {
+      // Handle success
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tracks imported successfully.')),
+      );
+    } else {
+      // Handle failure
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to import tracks.')),
+      );
     }
   }
 }

@@ -1,12 +1,16 @@
 // lib/views/home/home.dart
+
+import 'package:euterpefy/utils/providers/app_context.dart';
 import 'package:euterpefy/utils/styles/buttons.dart';
 import 'package:euterpefy/views/home/tabs/account.dart';
 import 'package:euterpefy/views/home/tabs/explore.dart';
 import 'package:euterpefy/views/home/tabs/browse.dart';
 import 'package:euterpefy/views/tracks_generating/advanced_generator.dart';
 import 'package:euterpefy/views/tracks_generating/genre_selection.dart';
+import 'package:euterpefy/widgets/login/spotify_login_button.dart';
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.title});
@@ -19,7 +23,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-
   final PageController _pageController = PageController();
 
   @override
@@ -31,6 +34,53 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final theme = Theme.of(context);
+    final spotifyService =
+        Provider.of<AppContext>(context, listen: true).spotifyService;
+    if (spotifyService == null) {
+      return Scaffold(
+          backgroundColor: theme.colorScheme.background,
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 32.0),
+                  child: Text(
+                    "Euterpefy",
+                    style: TextStyle(
+                      fontSize: 70,
+                      fontWeight: FontWeight.w900,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 32.0),
+                  child: Column(children: [
+                    Text(
+                      "Let the music find you",
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleLarge!.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    Text(
+                      "Dive into a world where every note understands you",
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium!.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.secondary,
+                      ),
+                    ),
+                  ]),
+                ),
+                const SpotifyLoginButton(),
+              ],
+            ),
+          ));
+    }
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
       body: SafeArea(

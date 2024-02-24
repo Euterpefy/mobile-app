@@ -15,7 +15,10 @@ class SpotifyLoginButton extends StatelessWidget {
       title: ElevatedButton.icon(
           onPressed: () => initiateSpotifyLogin(context),
           icon: const SpotifyLogo(),
-          label: const Text('Login with Spotify'),
+          label: const Text(
+            'Login with Spotify',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
           style: elevatedButtonStyle(Colors.black, Colors.white)),
     );
   }

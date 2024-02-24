@@ -144,12 +144,13 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
   }
 
   Widget _buildSection(String title, List<EuterpefyPlaylist> playlists) {
-    return Column(
+    return Section(
+        child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionTitle(title: topicToSectionTitle(title)),
         SizedBox(
-          height: 300, // Adjust based on your content
+          height: 280, // Adjust based on your content
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: playlists.length,
@@ -160,7 +161,7 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
           ),
         ),
       ],
-    );
+    ));
   }
 
   Widget _buildPlaylistCard(EuterpefyPlaylist playlist, int index) {
@@ -192,7 +193,7 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
                   children: [
                     Text(
                       'Mix ${index + 1}',
-                      style: theme.textTheme.labelLarge!.copyWith(
+                      style: theme.textTheme.bodyLarge!.copyWith(
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w700),
                       overflow: TextOverflow.ellipsis,
@@ -207,7 +208,7 @@ class _EuterpefyPlaylistSectionState extends State<EuterpefyPlaylistSection> {
                           .toSet()
                           .take(15)
                           .join(', '),
-                      style: theme.textTheme.labelMedium!
+                      style: theme.textTheme.bodySmall!
                           .copyWith(color: theme.colorScheme.secondary),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 3,

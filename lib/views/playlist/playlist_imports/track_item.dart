@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:euterpefy/models/tracks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:flutter/cupertino.dart';
 
 class SlidableTrackItem extends StatelessWidget {
   final Track track;
@@ -51,7 +54,15 @@ class SlidableTrackItem extends StatelessWidget {
           maxLines: 1,
         ),
         trailing: IconButton(
-          icon: Icon(isCurrentTrackPlaying ? Icons.pause : Icons.play_arrow),
+          icon: Icon(isCurrentTrackPlaying
+              ? (Platform.isIOS ? CupertinoIcons.pause_fill : Icons.pause)
+              : (Platform.isIOS
+                  ? (track.previewUrl == null
+                      ? CupertinoIcons.play
+                      : CupertinoIcons.play_fill)
+                  : track.previewUrl == null
+                      ? Icons.play_arrow_outlined
+                      : Icons.play_arrow)),
           onPressed: onTrackPressed,
           color: track.previewUrl == null ? Colors.grey : null,
         ),

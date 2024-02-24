@@ -1,6 +1,5 @@
 import 'package:euterpefy/models/artists.dart';
 import 'package:euterpefy/models/tracks_request.dart';
-import 'package:euterpefy/utils/color.dart';
 import 'package:euterpefy/utils/styles/buttons.dart';
 import 'package:euterpefy/views/tracks_generating/artist_selection.dart';
 import 'package:euterpefy/views/tracks_generating/genre_selection.dart';
@@ -29,9 +28,11 @@ class _AdvancedGenerationScreenState extends State<AdvancedGenerationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    var bottomPadding = MediaQuery.of(context).padding.bottom;
+
     int totalSeeds =
         selectedGenres.length + selectedArtists.length + selectedTracks.length;
-
     return Scaffold(
         appBar: customAppBar(context, "Advanced Recommender"),
         body: Stack(children: [
@@ -76,15 +77,20 @@ class _AdvancedGenerationScreenState extends State<AdvancedGenerationScreen> {
                   )..add(
                       totalSeeds < 5
                           ? (selectedGenres.isEmpty
-                              ? OutlinedButton.icon(
+                              ? ElevatedButton.icon(
                                   onPressed: () =>
                                       _navigateAndDisplayGenreSelection(
                                           context),
                                   label: const Text('Select'),
                                   icon: const Icon(Icons.add),
-                                  style: outlinedButtonStyle(blue),
+                                  style: elevatedButtonStyle(
+                                      theme.colorScheme.secondary,
+                                      theme.colorScheme.onSecondary),
                                 )
-                              : IconButton.filledTonal(
+                              : IconButton(
+                                  style: elevatedButtonStyle(
+                                      theme.colorScheme.secondary,
+                                      theme.colorScheme.onSecondary),
                                   icon: const Icon(Icons.add),
                                   onPressed: () =>
                                       _navigateAndDisplayGenreSelection(
@@ -222,13 +228,16 @@ class _AdvancedGenerationScreenState extends State<AdvancedGenerationScreen> {
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
-                  color: Colors.white, // Background color for the button bar
-                  padding: const EdgeInsets.all(8.0),
+                  color: theme.colorScheme.primaryContainer,
+                  padding: EdgeInsets.fromLTRB(
+                      8, 8, 8, bottomPadding == 0 ? 8 : bottomPadding),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       ElevatedButton(
                         onPressed: _generateRecommendations,
+                        style: elevatedButtonStyle(theme.colorScheme.primary,
+                            theme.colorScheme.onPrimary),
                         child: const Text('Generate Tracks'),
                       ),
                     ],

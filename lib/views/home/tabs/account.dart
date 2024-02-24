@@ -43,12 +43,12 @@ class _AccountTabState extends State<AccountTab>
   @override
   Widget build(BuildContext context) {
     super.build(context); // Need to call super.build
-
+    final theme = Theme.of(context);
     final user = Provider.of<AppContext>(context, listen: true).user;
     return SingleChildScrollView(
       child: Column(children: [
         ListTile(
-          tileColor: Theme.of(context).colorScheme.primaryContainer,
+          tileColor: theme.colorScheme.primaryContainer,
           title: Container(
             constraints: const BoxConstraints(minHeight: 200),
             alignment: Alignment.center,
@@ -65,10 +65,11 @@ class _AccountTabState extends State<AccountTab>
                       Text(
                         user.displayName ?? user.id,
                         style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer),
+                            color: theme.colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20),
                       ),
+                      Text('${user.followers.total} followers')
                     ],
                   )
                 : Column(
@@ -77,9 +78,7 @@ class _AccountTabState extends State<AccountTab>
                       Text(
                         'Login for more features and better generations',
                         style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer),
+                            color: theme.colorScheme.onPrimaryContainer),
                         textAlign: TextAlign.center,
                       ),
                     ],

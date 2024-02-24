@@ -57,6 +57,8 @@ class _ArtistSelectionScreenState extends State<ArtistSelectionScreen> {
       List<Artist> newArtists = await spotifyService!
               .fetchSeedArtists(seedGenres: widget.selectedGenres) ??
           [];
+
+      print(newArtists.length);
       setState(() {
         if (merge) {
           // Merge new artists with existing ones, avoiding duplicates
