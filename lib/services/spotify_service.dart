@@ -18,6 +18,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 
 class SpotifyService {
+  final String baseUrl = 'https://api.spotify.com/v1';
+
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   String accessToken;
   String refreshToken;
@@ -81,7 +83,7 @@ class SpotifyService {
     }
   }
 
-  Future<dynamic> _getWithCaching(String url) async {
+  Future<dynamic> _getWithCaching(String url, {int cachingTime = 5}) async {
     // Check cache first
     if (_cacheManager.has(url)) {
       return _cacheManager.get(url);
@@ -113,8 +115,8 @@ class SpotifyService {
     // Cache the successful response
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      _cacheManager.set(url, data,
-          ttl: const Duration(minutes: 5)); // Adjust TTL as needed
+      // Adjust TTL as needed
+      _cacheManager.set(url, data, ttl: Duration(minutes: cachingTime));
       return data;
     } else {
       _checkForAuthFailure(response);
@@ -158,31 +160,93 @@ class SpotifyService {
     }
   }
 
-  Future<User?> fetchUserProfile() async {
-    var response = await http.get(
-      Uri.parse('https://api.spotify.com/v1/me'),
-      headers: {'Authorization': 'Bearer $accessToken'},
-    );
-    if (response.statusCode == 200) {
-      var data = json.decode(response.body);
-      // Create a User object from the data
-      var user = User.fromJson(data);
-      // Update global user state
+  Future<List<String>?> fetchSeedGenres() async {
+    final data =
+        await _getWithCaching("$baseUrl/recommendations/available-genre-seeds");
+    if (data == null) return null;
+    List<String> genres = (data['genres'] as List<dynamic>)
+        .map((genre) => genre.toString())
+        .toList();
+    return genres;
+  }
 
-      return user;
+  Future<List<Artist>?> fetchSeedArtists(
+      {required List<String> seedGenres}) async {
+    final tracks = await generateRecommendations(
+        TracksRequest(seedGenres: seedGenres.take(5).toList(), limit: 50));
+    if (tracks.isEmpty) {
+      return null;
     }
+    // Extract all artist IDs from tracks, considering that a track can have multiple artists
+    var allArtistIds = tracks
+        .expand((track) => track.artists.map((artist) => artist.id))
+        .toSet()
+        .toList();
 
-    return null;
+    // Now fetch details for all these artists using fetchSeveralArtists
+    return await fetchSeveralArtists(allArtistIds);
+  }
+
+  Future<List<Track>?> fetchSeedTracks(
+      {required List<String> seedGenres,
+      required List<String> seedArtists}) async {
+    final tracks = await generateRecommendations(TracksRequest(
+        seedGenres: seedGenres.take(5).toList(),
+        seedArtists: seedArtists.take(5 - seedGenres.length).toList(),
+        limit: 50));
+
+    if (tracks.isEmpty) return null;
+
+    return tracks;
+  }
+
+  Future<List<Artist>?> fetchSeveralArtists(List<String> ids) async {
+    final data =
+        await _getWithCaching("$baseUrl/artists?ids=${ids.take(50).join(',')}");
+
+    if (data == null) return null;
+
+    List<Artist> artists = (data['artists'] as List<dynamic>)
+        .map((x) => Artist.fromJson(x))
+        .toList();
+    for (Artist artist in artists) {
+      _cacheManager.set('$baseUrl/artists/${artist.id}', artist,
+          ttl: const Duration(minutes: 60));
+    }
+    return artists;
+  }
+
+  Future<User?> fetchUserProfile() async {
+    var data = await _getWithCaching('$baseUrl/me');
+    if (data == null) return null;
+    return User.fromJson(data);
   }
 
   Future<PagedResponse<SimplifiedPlaylist>?> getUserPlaylists(String userId,
       {int limit = 20, int offset = 0}) async {
-    final url =
-        'https://api.spotify.com/v1/users/$userId/playlists?limit=$limit&offset=$offset';
+    final url = '$baseUrl/users/$userId/playlists?limit=$limit&offset=$offset';
 
     // Fetch data using the caching method.
     // _getWithCaching now returns the decoded JSON directly, or null.
     final data = await _getWithCaching(url);
+
+    if (data != null) {
+      // Directly work with the returned data, assuming it's already decoded JSON.
+      return PagedResponse.fromJson(
+          data, (itemJson) => SimplifiedPlaylist.fromJson(itemJson));
+    } else {
+      // If data is null, it indicates an error or data is not available/cached.
+      return null;
+    }
+  }
+
+  Future<PagedResponse<SimplifiedPlaylist>?> getCurrentUserPlaylists(
+      {int limit = 50, int offset = 0}) async {
+    final url = '$baseUrl/me/playlists?limit=$limit&offset=$offset';
+
+    // Fetch data using the caching method.
+    // _getWithCaching now returns the decoded JSON directly, or null.
+    final data = await _getWithCaching(url, cachingTime: 2);
 
     if (data != null) {
       // Directly work with the returned data, assuming it's already decoded JSON.
@@ -221,7 +285,7 @@ class SpotifyService {
       {bool isPublic = true,
       bool isCollaborative = false,
       String? description}) async {
-    final url = 'https://api.spotify.com/v1/users/$userId/playlists';
+    final url = '$baseUrl/users/$userId/playlists';
     final body = jsonEncode({
       'name': name,
       'public': isPublic,
@@ -240,7 +304,7 @@ class SpotifyService {
 
   Future<bool> addTracksToPlaylist(
       String playlistId, List<String> trackIds) async {
-    final url = 'https://api.spotify.com/v1/playlists/$playlistId/tracks';
+    final url = '$baseUrl/playlists/$playlistId/tracks';
     final body = jsonEncode(
         {'uris': trackIds.map((id) => 'spotify:track:$id').toList()});
 
@@ -249,7 +313,7 @@ class SpotifyService {
   }
 
   Future<List<Track>> fetchPlaylistTracks(String playlistId) async {
-    final url = 'https://api.spotify.com/v1/playlists/$playlistId/tracks';
+    final url = '$baseUrl/playlists/$playlistId/tracks';
     final data = await _getWithCaching(url);
     if (data != null) {
       List<Track> tracks = [];
@@ -267,7 +331,7 @@ class SpotifyService {
 
   Future<List<Category>> fetchBrowseCategories(
       {String? locale, int limit = 20, int offset = 0}) async {
-    String url = 'https://api.spotify.com/v1/browse/categories';
+    String url = '$baseUrl/browse/categories';
     Map<String, dynamic> queryParams = {
       if (locale != null) 'locale': locale,
       'limit': limit.toString(),
@@ -291,7 +355,7 @@ class SpotifyService {
       String categoryId) async {
     List<SimplifiedPlaylist> allPlaylists = [];
     String url =
-        'https://api.spotify.com/v1/browse/categories/$categoryId/playlists?limit=20'; // Assuming a default limit of 20 for simplicity
+        '$baseUrl/browse/categories/$categoryId/playlists?limit=20'; // Assuming a default limit of 20 for simplicity
 
     dynamic data = await _getWithCaching(url);
     while (data != null) {
@@ -324,8 +388,7 @@ class SpotifyService {
 
     final queryString = Uri(queryParameters: queryParams).query;
 
-    String url =
-        'https://api.spotify.com/v1/browse/featured-playlists?$queryString';
+    String url = '$baseUrl/browse/featured-playlists?$queryString';
 
     dynamic data = await _getWithCaching(url);
     if (data == null) return [];
@@ -334,7 +397,7 @@ class SpotifyService {
   }
 
   Future<Album?> fetchAlbum(String albumId) async {
-    String url = 'https://api.spotify.com/v1/albums/$albumId';
+    String url = '$baseUrl/albums/$albumId';
     dynamic data = await _getWithCaching(url);
     if (data == null) return null;
     return Album.fromJson(data);
@@ -352,7 +415,7 @@ class SpotifyService {
     };
 
     final queryString = Uri(queryParameters: queryParams).query;
-    String url = 'https://api.spotify.com/v1/browse/new-releases?$queryString';
+    String url = '$baseUrl/browse/new-releases?$queryString';
 
     dynamic data = await _getWithCaching(url);
     if (data == null) return [];
@@ -366,7 +429,7 @@ class SpotifyService {
     int offset = 0,
   }) async {
     final url =
-        'https://api.spotify.com/v1/me/top/artists?time_range=$timeRange&limit=$limit&offset=$offset';
+        '$baseUrl/me/top/artists?time_range=$timeRange&limit=$limit&offset=$offset';
 
     dynamic data = await _getWithCaching(url);
     if (data == null) return [];
@@ -380,7 +443,7 @@ class SpotifyService {
     int offset = 0,
   }) async {
     final url =
-        'https://api.spotify.com/v1/me/top/tracks?time_range=$timeRange&limit=$limit&offset=$offset';
+        '$baseUrl/me/top/tracks?time_range=$timeRange&limit=$limit&offset=$offset';
 
     dynamic data = await _getWithCaching(url);
     if (data == null) return [];
@@ -397,7 +460,7 @@ class SpotifyService {
 
     while (moreAvailable) {
       final url =
-          'https://api.spotify.com/v1/me/top/artists?time_range=$timeRange&limit=$limit&offset=$offset';
+          '$baseUrl/me/top/artists?time_range=$timeRange&limit=$limit&offset=$offset';
       dynamic data = await _getWithCaching(url);
       if (data != null) {
         final List<dynamic> items = data['items'];
@@ -426,7 +489,7 @@ class SpotifyService {
 
     while (moreAvailable) {
       final url =
-          'https://api.spotify.com/v1/me/top/tracks?time_range=$timeRange&limit=$limit&offset=$offset';
+          '$baseUrl/me/top/tracks?time_range=$timeRange&limit=$limit&offset=$offset';
       dynamic data = await _getWithCaching(url);
 
       if (data != null) {
@@ -453,7 +516,7 @@ class SpotifyService {
     queryParams.removeWhere(
         (key, value) => value == null || value.toString() == 'null');
     final queryString = Uri(queryParameters: queryParams).query;
-    final url = 'https://api.spotify.com/v1/recommendations?$queryString';
+    final url = '$baseUrl/recommendations?$queryString';
     dynamic data = await _getWithCaching(url);
     if (data != null) {
       final List<dynamic> tracksJson = data['tracks'];
@@ -470,14 +533,14 @@ class SpotifyService {
 
     // Assuming you have a method to generate a playlist from tracks
     await Future.delayed(const Duration(seconds: 1));
-    final trackBasedPlaylist = await generatePlaylistFromTracks(topTracks);
+    final trackBasedPlaylist = await _generatePlaylistFromTracks(topTracks);
     _playlistStreamController.add(trackBasedPlaylist); // Emit the playlist
 
     await Future.delayed(const Duration(seconds: 1));
     final topArtists = await fetchTopArtists(limit: 20);
     await Future.delayed(const Duration(seconds: 1));
     final artistBasedPlaylist =
-        await generatePlaylistFromArtists(topArtists.take(5).toList());
+        await _generatePlaylistFromArtists(topArtists.take(5).toList());
     _playlistStreamController.add(artistBasedPlaylist); // Emit the playlist
 
     // Extract genres from top artists
@@ -519,7 +582,7 @@ class SpotifyService {
     }
   }
 
-  Future<EuterpefyPlaylist> generatePlaylistFromTracks(
+  Future<EuterpefyPlaylist> _generatePlaylistFromTracks(
       List<Track> tracks) async {
     // Seed IDs for recommendations
     final seedTracks = tracks.map((track) => track.id).toList();
@@ -535,7 +598,7 @@ class SpotifyService {
     );
   }
 
-  Future<EuterpefyPlaylist> generatePlaylistFromArtists(
+  Future<EuterpefyPlaylist> _generatePlaylistFromArtists(
       List<Artist> artists) async {
     // Seed IDs for recommendations
     final seedArtists = artists.map((e) => e.id).toList();
