@@ -33,7 +33,7 @@ class _AlbumViewState extends State<AlbumView> {
     super.dispose();
   }
 
-// Use this method to show the SnackBar
+  // Use this method to show the SnackBar
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
