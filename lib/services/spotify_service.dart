@@ -25,8 +25,10 @@ class SpotifyService {
   String refreshToken;
   DateTime expirationDate;
   final Function onAuthFail;
+  String userId;
 
   SpotifyService({
+    required this.userId,
     required this.accessToken,
     required this.refreshToken,
     required this.expirationDate,
@@ -83,10 +85,12 @@ class SpotifyService {
     }
   }
 
-  Future<dynamic> _getWithCaching(String url, {int cachingTime = 5}) async {
+  Future<dynamic> _getWithCaching(String url,
+      {int cachingTime = 5, bool userUnique = false}) async {
+    final cacheUrl = userUnique ? '$userId/$url' : url;
     // Check cache first
-    if (_cacheManager.has(url)) {
-      return _cacheManager.get(url);
+    if (_cacheManager.has(cacheUrl)) {
+      return _cacheManager.get(cacheUrl);
     }
 
     // Check if we need to respect rate limiting
@@ -116,7 +120,45 @@ class SpotifyService {
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       // Adjust TTL as needed
-      _cacheManager.set(url, data, ttl: Duration(minutes: cachingTime));
+      _cacheManager.set(cacheUrl, data, ttl: Duration(minutes: cachingTime));
+      return data;
+    } else {
+      _checkForAuthFailure(response);
+      // Handle other errors or return null to indicate an issue
+      return null;
+    }
+  }
+
+  Future<dynamic> _getNoCaching(
+    String url,
+  ) async {
+    // Check if we need to respect rate limiting
+    if (_rateLimitResetTime != null &&
+        DateTime.now().isBefore(_rateLimitResetTime!)) {
+      final waitDuration = _rateLimitResetTime!.difference(DateTime.now());
+      await Future.delayed(waitDuration);
+    }
+
+    final response = await http.get(Uri.parse(url), headers: {
+      'Authorization': 'Bearer $accessToken',
+      'Content-Type': 'application/json',
+    });
+
+    // Handle rate limiting
+    if (response.statusCode == 429) {
+      int waitSeconds = int.parse(response.headers['Retry-After'] ?? '60');
+      _rateLimitResetTime = DateTime.now().add(Duration(seconds: waitSeconds));
+      return Future.delayed(
+          Duration(seconds: waitSeconds), () => _getWithCaching(url));
+    }
+
+    // Reset rate limit reset time on successful request
+    _rateLimitResetTime = null;
+
+    // Cache the successful response
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      // Adjust TTL as needed
       return data;
     } else {
       _checkForAuthFailure(response);
@@ -217,7 +259,7 @@ class SpotifyService {
   }
 
   Future<User?> fetchUserProfile() async {
-    var data = await _getWithCaching('$baseUrl/me');
+    var data = await _getWithCaching('$baseUrl/me', userUnique: true);
     if (data == null) return null;
     return User.fromJson(data);
   }
@@ -228,7 +270,7 @@ class SpotifyService {
 
     // Fetch data using the caching method.
     // _getWithCaching now returns the decoded JSON directly, or null.
-    final data = await _getWithCaching(url);
+    final data = await _getWithCaching(url, userUnique: true);
 
     if (data != null) {
       // Directly work with the returned data, assuming it's already decoded JSON.
@@ -246,7 +288,7 @@ class SpotifyService {
 
     // Fetch data using the caching method.
     // _getWithCaching now returns the decoded JSON directly, or null.
-    final data = await _getWithCaching(url, cachingTime: 2);
+    final data = await _getWithCaching(url, cachingTime: 2, userUnique: true);
 
     if (data != null) {
       // Directly work with the returned data, assuming it's already decoded JSON.
@@ -290,7 +332,9 @@ class SpotifyService {
       'name': name,
       'public': isPublic,
       'collaborative': isCollaborative,
-      'description': description ?? 'Playlist created by Euterpefy',
+      'description': description == null || description.isEmpty
+          ? 'Playlist created by Euterpefy'
+          : description,
     });
 
     final data = await _postWithHandling(url, body);
@@ -342,7 +386,7 @@ class SpotifyService {
     url += '?$queryString';
 
     List<Category> categories = [];
-    dynamic data = await _getWithCaching(url);
+    dynamic data = await _getWithCaching(url, userUnique: true);
     if (data != null) {
       final items = data['categories']['items'] as List;
       categories.addAll(
@@ -357,7 +401,7 @@ class SpotifyService {
     String url =
         '$baseUrl/browse/categories/$categoryId/playlists?limit=20'; // Assuming a default limit of 20 for simplicity
 
-    dynamic data = await _getWithCaching(url);
+    dynamic data = await _getWithCaching(url, userUnique: true);
     while (data != null) {
       final playlistsJson = data['playlists']['items'] as List;
       List<SimplifiedPlaylist> playlists = playlistsJson
@@ -367,7 +411,7 @@ class SpotifyService {
 
       String? nextUrl = data['playlists']['next'];
       if (nextUrl != null) {
-        data = await _getWithCaching(nextUrl);
+        data = await _getWithCaching(nextUrl, userUnique: true);
       } else {
         break; // Exit the loop if there is no next page
       }
@@ -390,7 +434,7 @@ class SpotifyService {
 
     String url = '$baseUrl/browse/featured-playlists?$queryString';
 
-    dynamic data = await _getWithCaching(url);
+    dynamic data = await _getWithCaching(url, userUnique: true);
     if (data == null) return [];
 
     return SimplifiedPlaylist.fromJsonList(data['playlists']['items']);
@@ -417,7 +461,7 @@ class SpotifyService {
     final queryString = Uri(queryParameters: queryParams).query;
     String url = '$baseUrl/browse/new-releases?$queryString';
 
-    dynamic data = await _getWithCaching(url);
+    dynamic data = await _getWithCaching(url, userUnique: true);
     if (data == null) return [];
     final playlistsJson = data['albums']['items'] as List;
     return playlistsJson.map((json) => SimplifiedAlbum.fromJson(json)).toList();
@@ -431,7 +475,7 @@ class SpotifyService {
     final url =
         '$baseUrl/me/top/artists?time_range=$timeRange&limit=$limit&offset=$offset';
 
-    dynamic data = await _getWithCaching(url);
+    dynamic data = await _getWithCaching(url, userUnique: true);
     if (data == null) return [];
     final items = data['items'] as List;
     return items.map((json) => Artist.fromJson(json)).toList();
@@ -445,7 +489,7 @@ class SpotifyService {
     final url =
         '$baseUrl/me/top/tracks?time_range=$timeRange&limit=$limit&offset=$offset';
 
-    dynamic data = await _getWithCaching(url);
+    dynamic data = await _getWithCaching(url, userUnique: true);
     if (data == null) return [];
     final items = data['items'] as List;
     return items.map((json) => Track.fromJson(json)).toList();
@@ -461,7 +505,7 @@ class SpotifyService {
     while (moreAvailable) {
       final url =
           '$baseUrl/me/top/artists?time_range=$timeRange&limit=$limit&offset=$offset';
-      dynamic data = await _getWithCaching(url);
+      dynamic data = await _getWithCaching(url, userUnique: true);
       if (data != null) {
         final List<dynamic> items = data['items'];
         allArtists.addAll(
@@ -490,7 +534,7 @@ class SpotifyService {
     while (moreAvailable) {
       final url =
           '$baseUrl/me/top/tracks?time_range=$timeRange&limit=$limit&offset=$offset';
-      dynamic data = await _getWithCaching(url);
+      dynamic data = await _getWithCaching(url, userUnique: true);
 
       if (data != null) {
         final List<dynamic> items = data['items'];
@@ -515,9 +559,11 @@ class SpotifyService {
     final queryParams = tracksRequest.toStringJson();
     queryParams.removeWhere(
         (key, value) => value == null || value.toString() == 'null');
-    final queryString = Uri(queryParameters: queryParams).query;
+    final queryString = Uri(
+        queryParameters: queryParams
+            .map((key, value) => MapEntry(key, value.toString()))).query;
     final url = '$baseUrl/recommendations?$queryString';
-    dynamic data = await _getWithCaching(url);
+    dynamic data = await _getNoCaching(url);
     if (data != null) {
       final List<dynamic> tracksJson = data['tracks'];
       return tracksJson.map((trackJson) => Track.fromJson(trackJson)).toList();
