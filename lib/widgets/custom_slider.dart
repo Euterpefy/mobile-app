@@ -1,25 +1,14 @@
+import 'package:euterpefy/views/tracks_generating/advanced_criterias.dart';
 import 'package:flutter/material.dart';
 
-class CustomRangeSlider extends StatelessWidget {
-  final String label;
-  final RangeValues rangeValues;
-  final double min;
-  final double max;
-  final int divisions;
-  final ValueChanged<RangeValues> onChanged;
-  final int decimalPlaces; // For formatting the labels
-  final String? description; // Optional property for the description
+class CustomCriteriaSlider extends StatelessWidget {
+  final Criteria criteria;
+  final Function(RangeValues) onChanged;
 
-  const CustomRangeSlider({
+  const CustomCriteriaSlider({
     super.key,
-    required this.label,
-    required this.rangeValues,
-    required this.min,
-    required this.max,
-    required this.divisions,
+    required this.criteria,
     required this.onChanged,
-    this.decimalPlaces = 2, // Default to 2 decimal places
-    this.description, // Initialize the optional description property
   });
 
   @override
@@ -38,15 +27,14 @@ class CustomRangeSlider extends StatelessWidget {
               mainAxisSize: MainAxisSize.min, // Keep content tightly packed
               children: [
                 Text(
-                  label,
+                  criteria.label,
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 16),
                 ),
-                if (description != null)
+                if (criteria.description != null)
                   IconButton(
                     icon: const Icon(Icons.info_outline),
-                    onPressed: () =>
-                        _showDescriptionDialog(context, description!),
+                    onPressed: () => _showDescriptionDialog(context),
                     tooltip: 'Info',
                     padding:
                         const EdgeInsets.only(left: 4), // Keep padding tight
@@ -60,13 +48,13 @@ class CustomRangeSlider extends StatelessWidget {
         // Slider takes up the rest of the space
         Expanded(
           child: RangeSlider(
-            values: rangeValues,
-            min: min,
-            max: max,
-            divisions: divisions,
+            values: criteria.values,
+            min: criteria.min,
+            max: criteria.max,
+            divisions: criteria.divisions,
             labels: RangeLabels(
-              rangeValues.start.toStringAsFixed(decimalPlaces),
-              rangeValues.end.toStringAsFixed(decimalPlaces),
+              criteria.values.start.toStringAsFixed(3),
+              criteria.values.end.toStringAsFixed(3),
             ),
             onChanged: onChanged,
           ),
@@ -75,7 +63,7 @@ class CustomRangeSlider extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: Text(
-            "${rangeValues.start.toStringAsFixed(decimalPlaces)} - ${rangeValues.end.toStringAsFixed(decimalPlaces)}",
+            "${criteria.values.start.toStringAsFixed(3)} - ${criteria.values.end.toStringAsFixed(3)}",
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
           ),
         ),
@@ -83,13 +71,13 @@ class CustomRangeSlider extends StatelessWidget {
     );
   }
 
-  void _showDescriptionDialog(BuildContext context, String description) {
+  void _showDescriptionDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(label),
-          content: Text(description),
+          title: Text(criteria.label),
+          content: Text(criteria.description!),
           actions: <Widget>[
             TextButton(
               child: const Text('OK'),
