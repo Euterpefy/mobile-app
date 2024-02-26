@@ -161,6 +161,7 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
   }
 
   void _importPlaylist() async {
+    final theme = Theme.of(context);
     final appContext = Provider.of<AppContext>(context, listen: false);
     final user = appContext.user;
     final spotifyService = appContext.spotifyService;
@@ -192,51 +193,68 @@ class _PlaylistImportViewState extends State<PlaylistImportView> {
             showDialog(
               context: context,
               builder: (BuildContext dialogContext) {
-                return AlertDialog(
-                  title: const Text(
-                    'Select a Playlist',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  content: SizedBox(
-                    width: double.maxFinite,
-                    child: ListView.builder(
-                      itemCount: playlists.items.length,
-                      itemBuilder: (BuildContext itemBuildContext, int index) {
-                        final coverImages = playlists.items[index].images;
-                        return ListTile(
-                          leading: coverImages.isNotEmpty
-                              ? Image.network(coverImages.first.url)
-                              : const SizedBox(
-                                  width: 55,
-                                  child: SpotifyLogo(),
-                                ),
-                          title: Text(
-                            playlists.items[index].name,
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                          subtitle: Text(
-                              '${playlists.items[index].tracks.total} tracks'),
-                          onTap: () {
-                            // Import tracks into the selected playlist
-                            _importTracksToPlaylist(spotifyService,
-                                playlists.items[index].id, _tracks);
-                            Navigator.of(dialogContext)
-                                .pop(); // Close the dialog
+                String selectedPlaylist = '';
+                return StatefulBuilder(builder: (context, setState) {
+                  return AlertDialog(
+                    title: const Text(
+                      'Select a Playlist',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    content: SizedBox(
+                      width: double.maxFinite,
+                      child: ListView.builder(
+                        itemCount: playlists.items.length,
+                        itemBuilder:
+                            (BuildContext itemBuildContext, int index) {
+                          final playlist = playlists.items[index];
+                          final coverImages = playlist.images;
+                          return ListTile(
+                            selected: selectedPlaylist == playlist.id,
+                            selectedTileColor:
+                                Theme.of(context).colorScheme.primaryContainer,
+                            selectedColor: theme.colorScheme.onPrimaryContainer,
+                            leading: coverImages.isNotEmpty
+                                ? Image.network(coverImages.first.url)
+                                : const SizedBox(
+                                    width: 55,
+                                    child: SpotifyLogo(),
+                                  ),
+                            title: Text(
+                              playlists.items[index].name,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w500),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                            subtitle: Text(
+                                '${playlists.items[index].tracks.total} tracks'),
+                            onTap: () {
+                              setState(() {
+                                selectedPlaylist = playlist.id;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext)
+                            .pop(), // Close the dialog
+                        child: const Text('Cancel'),
+                      ),
+                      if (selectedPlaylist != "")
+                        TextButton(
+                          onPressed: () async => {
+                            Navigator.of(dialogContext).pop(),
+                            _importTracksToPlaylist(
+                                spotifyService, selectedPlaylist, _tracks)
                           },
-                        );
-                      },
-                    ),
-                  ),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.of(dialogContext).pop(), // Close the dialog
-                      child: const Text('Cancel'),
-                    ),
-                  ],
-                );
+                          child: const Text('Import'),
+                        ),
+                    ],
+                  );
+                });
               },
             );
           },
