@@ -50,13 +50,17 @@ class MyApp extends StatelessWidget {
         }
         return appContext;
       },
-      child: MaterialApp(
-        title: 'Euterpefy',
-        theme: lightTheme(), // Use the light theme
-        darkTheme: darkTheme(), // Use the dark theme
-        themeMode: ThemeMode.system, // Use system theme mode
-        home: const HomePage(title: 'Music Recommender'),
-      ),
+      child: Consumer<AppContext>(
+          child: const HomePage(title: 'Music Recommender'),
+          builder: (c, appContext, child) {
+            return MaterialApp(
+              title: 'Euterpefy',
+              theme: lightTheme(), // Use the light theme
+              darkTheme: darkTheme(), // Use the dark theme
+              themeMode: appContext.selectedThemeMode, // Use system theme mode
+              home: child,
+            );
+          }),
     );
   }
 
@@ -80,5 +84,14 @@ class MyApp extends StatelessWidget {
       appContext.login(User.fromJson(data), newAccessToken, newRefreshToken,
           newExpriationDate);
     }
+
+    // load theme mode
+    const storage = FlutterSecureStorage();
+    String themeMode = await storage.read(key: 'themeMode') ?? 'system';
+    if (appContext.user != null) {
+      themeMode = await storage.read(key: '${appContext.user!.id}/themeMode') ??
+          themeMode;
+    }
+    appContext.setTheme(themeMode);
   }
 }

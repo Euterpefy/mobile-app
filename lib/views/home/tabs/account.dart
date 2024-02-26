@@ -2,6 +2,7 @@
 
 import 'package:euterpefy/utils/providers/app_context.dart';
 import 'package:euterpefy/utils/styles/buttons.dart';
+import 'package:euterpefy/views/themes/appearance_select.dart';
 import 'package:euterpefy/widgets/login/spotify_login_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -44,7 +45,8 @@ class _AccountTabState extends State<AccountTab>
   Widget build(BuildContext context) {
     super.build(context); // Need to call super.build
     final theme = Theme.of(context);
-    final user = Provider.of<AppContext>(context, listen: true).user;
+    final appContext = Provider.of<AppContext>(context, listen: true);
+    final user = appContext.user;
     return SingleChildScrollView(
       child: Column(children: [
         ListTile(
@@ -91,13 +93,25 @@ class _AccountTabState extends State<AccountTab>
           )
         else
           ListTile(
-            title: ElevatedButton.icon(
-              onPressed: logout,
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout'),
-              style: elevatedButtonStyle(Colors.black, Colors.white),
-            ),
+            title: const Text('Appearance'),
+            subtitle: Text('Theme: ${appContext.selectedThemeMode.name}'),
+            onTap: () => {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => AppearanceScreen(
+                          currentThemeMode: appContext.selectedThemeMode.name,
+                          currentColor: Colors.black)))
+            },
           ),
+        ListTile(
+          title: ElevatedButton.icon(
+            onPressed: logout,
+            icon: const Icon(Icons.logout),
+            label: const Text('Logout'),
+            style: elevatedButtonStyle(Colors.black, Colors.white),
+          ),
+        ),
       ]),
     );
   }
@@ -115,15 +129,15 @@ class AvatarIcon extends StatelessWidget {
     return userAvatar != null
         ? CircleAvatar(
             backgroundImage: NetworkImage(userAvatar!),
-            radius: 40,
+            radius: 45,
           )
         : CircleAvatar(
             backgroundColor: theme.colorScheme.primary,
-            radius: 40,
+            radius: 45,
             child: Text(
               userName != null && userName!.isNotEmpty ? userName![0] : "S",
               style:
-                  TextStyle(fontSize: 24.0, color: theme.colorScheme.onPrimary),
+                  TextStyle(fontSize: 28.0, color: theme.colorScheme.onPrimary),
             ),
           );
   }

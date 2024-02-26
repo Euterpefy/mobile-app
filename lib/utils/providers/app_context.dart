@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 class AppContext extends ChangeNotifier {
   User? _user;
   SpotifyService? _spotifyService;
+  ThemeMode _selectedThemeMode = ThemeMode.system;
 
   User? get user => _user;
+  ThemeMode get selectedThemeMode => _selectedThemeMode;
   SpotifyService? get spotifyService => _spotifyService;
 
   AppContext();
@@ -15,6 +17,7 @@ class AppContext extends ChangeNotifier {
       DateTime expirationDate) {
     _user = user;
     _spotifyService = SpotifyService(
+      userId: user.id,
       accessToken: accessToken,
       refreshToken: refreshToken,
       expirationDate: expirationDate,
@@ -37,6 +40,15 @@ class AppContext extends ChangeNotifier {
   void onAuthenticationFailure() {
     _user = null;
     _spotifyService = null;
+    notifyListeners();
+  }
+
+  void setTheme(String themeMode) {
+    _selectedThemeMode = themeMode == "system"
+        ? ThemeMode.system
+        : themeMode == "dark"
+            ? ThemeMode.dark
+            : ThemeMode.light;
     notifyListeners();
   }
 }
