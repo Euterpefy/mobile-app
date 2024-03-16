@@ -1,31 +1,20 @@
 # Euterpefy: Music Recommender
 
 Euterpefy is a music recommender mobile application developed for CS4750, designed to create
-personalized playlists for users based on their current mood and taste. The app leverages the
-Spotify API to fetch data and utilize its recommendation system, providing users with music that
-suits their preferences.
+personalized playlists for users based on their current mood and taste. The app leverages the Spotify API to fetch data and utilize its recommendation system, providing users with music that suits their preferences.
 
 ## Inspiration
 
-Named after Euterpe, one of the nine Muses in Greek mythology known as the muse of music and lyric
-poetry, Euterpefy aims to bring harmony and inspiration to your daily life. The suffix "fy,"
-inspired by Spotify, reflects the app's use of the Spotify API for underlying data fetching and
-recommendation mechanisms.
+Named after Euterpe, one of the nine Muses in Greek mythology known as the muse of music and lyric poetry, Euterpefy aims to bring harmony and inspiration to your daily life. The suffix "fy," inspired by Spotify, reflects the app's use of the Spotify API for underlying data fetching and recommendation mechanisms.
 
 ## Project Objective
 
-This class project aims to provide hands-on experience in mobile app development, from conception to
-deployment. Through Euterpefy, students learn to build a mobile application from scratch,
-integrating third-party APIs and implementing user interface design principles to enhance user
-experience.
+This class project aims to provide hands-on experience in mobile app development, from conception to deployment. Through Euterpefy, students learn to build a mobile application from scratch, integrating third-party APIs and implementing user interface design principles to enhance user experience.
 
 ## Technical Stack
 
 Euterpefy is built using Flutter for the frontend, providing a seamless and responsive user
-interface across multiple platforms. The backend logic, including interactions with the Spotify API,
-is powered by Rust through the [`rustyspoty`](https://github.com/bluesimp1102/rustyspoty) crate.
-This combination ensures an efficient performance, leveraging Rust's safety and
-concurrency features.
+interface across multiple platforms. The backend logic, including interactions with the Spotify API, is powered by Rust through the [`rustyspoty`](https://github.com/bluesimp1102/rustyspoty) crate. This combination ensures an efficient performance, leveraging Rust's safety and concurrency features.
 
 ## Features
 
@@ -49,27 +38,27 @@ system. Follow these steps:
 
 1. **Clone the repository:**
 
-    ```sh
-    git clone https://github.com/Euterpefy/mobile-app.git
-    ```
+   ```sh
+   git clone https://github.com/Euterpefy/mobile-app.git
+   ```
 
 2. **Navigate to the project directory:**
 
-    ```sh
-    cd mobile_app
-    ```
+   ```sh
+   cd mobile_app
+   ```
 
 3. **Install dependencies:**
 
-    ```sh
-    flutter pub get
-    ```
+   ```sh
+   flutter pub get
+   ```
 
 4. **Run the app:**
 
-    ```sh
-    flutter run
-    ```
+   ```sh
+   flutter run
+   ```
 
 ## Resources
 
