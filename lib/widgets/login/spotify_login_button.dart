@@ -12,14 +12,18 @@ class SpotifyLoginButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: () => initiateSpotifyLogin(context),
-      title: ElevatedButton.icon(
-          onPressed: () => initiateSpotifyLogin(context),
-          icon: const SpotifyLogo(),
-          label: const Text(
-            'Login with Spotify',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          style: elevatedButtonStyle(Colors.black, Colors.white)),
+      title: Semantics(
+        button: true,
+        label: 'Login with Spotify',
+        child: ElevatedButton.icon(
+            onPressed: () => initiateSpotifyLogin(context),
+            icon: const SpotifyLogo(),
+            label: const Text(
+              'Login with Spotify',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            style: elevatedButtonStyle(Colors.black, Colors.white)),
+      ),
     );
   }
 }

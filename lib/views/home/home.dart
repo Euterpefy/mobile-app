@@ -132,9 +132,21 @@ class _HomePageState extends State<HomePage> {
                   .jumpToPage(index); // Use PageController to switch pages
             },
             tabs: const [
-              GButton(icon: Icons.search, text: 'Browse'),
-              GButton(icon: Icons.explore, text: 'Explore'),
-              GButton(icon: Icons.person, text: 'Account'),
+              GButton(
+                icon: Icons.search,
+                text: 'Browse',
+                semanticLabel: 'Browsing tab',
+              ),
+              GButton(
+                icon: Icons.explore,
+                text: 'Explore',
+                semanticLabel: 'Exploring tab',
+              ),
+              GButton(
+                icon: Icons.person,
+                text: 'Account',
+                semanticLabel: 'Account tab',
+              ),
             ],
           ),
         ),
@@ -148,29 +160,37 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const GenreSelectionScreen()),
-              );
-            },
-            style: elevatedButtonStyle(theme.colorScheme.inversePrimary,
-                theme.colorScheme.inverseSurface),
-            child: const Text('Quick Generating'),
+          Semantics(
+            button: true,
+            label: 'Quick Generate',
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const GenreSelectionScreen()),
+                );
+              },
+              style: elevatedButtonStyle(theme.colorScheme.inversePrimary,
+                  theme.colorScheme.inverseSurface),
+              child: const Text('Quick Generating'),
+            ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const AdvancedGenerationScreen()),
-              );
-            },
-            style: elevatedButtonStyle(theme.colorScheme.primaryContainer,
-                theme.colorScheme.onPrimaryContainer),
-            child: const Text('Advanced Generating'),
+          Semantics(
+            button: true,
+            label: 'Advanced Generate',
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const AdvancedGenerationScreen()),
+                );
+              },
+              style: elevatedButtonStyle(theme.colorScheme.primaryContainer,
+                  theme.colorScheme.onPrimaryContainer),
+              child: const Text('Advanced Generating'),
+            ),
           ),
         ],
       ),

@@ -38,15 +38,16 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
             setState(() {
               loadingPercentage = 100;
             });
+            // Injecting JavaScript to change the text color
+            // controller.runJavaScript("document.body.style.color = '#ffffff';");
           },
           onWebResourceError: (WebResourceError error) {},
           onNavigationRequest: (NavigationRequest request) {
-            print("Navigating to: ${request.url}");
+            // print("Navigating to: ${request.url}");
             if (request.url.startsWith(dotenv.env['REDIRECT_URI']!)) {
               Uri uri = Uri.parse(request.url);
               String? code = uri.queryParameters['code'];
-              String? state = uri.queryParameters['state'];
-              print(state);
+              // String? state = uri.queryParameters['state'];
               // if (code != null) {
               //   Navigator.pop(context, code);
               // }
